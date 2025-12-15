@@ -21,20 +21,36 @@ Protótipo de uma plataforma para apoiar a gestão da Atenção Primária à Sa�
 ### Pré-requisitos
 - Python 3.13+
 - Node.js 18+
-- Docker e Docker Compose
+- PostgreSQL 16+ instalado localmente
 
 ### 1. Banco de Dados (PostgreSQL)
 
-Inicie o container do PostgreSQL:
+Certifique-se de que o PostgreSQL está instalado e rodando localmente.
+
+#### Criar o banco de dados:
 
 ```bash
-docker-compose up -d
+psql -U postgres
+CREATE DATABASE plataforma_digital;
+\q
 ```
 
-Para verificar se está rodando:
+#### Configurar variáveis de ambiente:
+
+Copie o arquivo `.env.example` para `.env` e configure com suas credenciais locais:
 
 ```bash
-docker ps
+cp .env.example .env
+```
+
+Edite o arquivo `.env` com suas configurações:
+
+```
+DB_USER=postgres
+DB_PASSWORD=sua_senha
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=plataforma_digital
 ```
 
 ### 2. Backend (FastAPI)
@@ -103,8 +119,8 @@ plataforma_digital/
 ├── main.py                 # Entry point do FastAPI
 ├── database.py            # Configuração do banco de dados
 ├── requirements.txt       # Dependências Python
-├── docker-compose.yml     # Configuração do PostgreSQL
-├── .env                   # Variáveis de ambiente
+├── .env                   # Variáveis de ambiente (criar a partir do .env.example)
+├── .env.example           # Template de variáveis de ambiente
 ├── models/               # Modelos SQLAlchemy
 │   └── auth_models.py
 ├── routes/               # Rotas da API
@@ -138,25 +154,13 @@ plataforma_digital/
 
 **Frontend:** `Ctrl+C` no terminal do vite
 
-**Docker:** 
-```bash
-docker-compose down
-```
-
-### Ver logs do banco de dados
-
-```bash
-docker logs meu-postgres
-```
-
 ### Acessar o PostgreSQL via terminal
 
 ```bash
-docker exec -it meu-postgres psql -U admin -d my_db
+psql -U postgres -d plataforma_digital
 ```
 
 ## Próximos Passos
 
 - Mapear fontes de dados e padrões de integração (ex.: CNES, e-SUS)
 - Desenhar telas iniciais para visualização de indicadores e fila de atendimentos
-- Definir métricas mínimas para pilotagem e coleta de feedback

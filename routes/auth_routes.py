@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from passlib.context import CryptContext
 
 from database import get_db
 from models.auth_models import Usuario, ProfissionalUbs
+from services.email_service import enviar_confirmacao_cadastro
 
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
@@ -32,7 +34,7 @@ class UsuarioOut(BaseModel):
     is_profissional: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ProfissionalCreate(BaseModel):
@@ -50,10 +52,15 @@ def verify_password(raw: str, hashed: str) -> bool:
 
 
 @auth_router.post("/sign-up", response_model=UsuarioOut, status_code=status.HTTP_201_CREATED)
-def cadastrar_usuario(payload: UsuarioCreate, db: Session = Depends(get_db)):
-    if db.query(Usuario).filter(Usuario.email == payload.email).first():
+async def cadastrar_usuario(payload: UsuarioCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    # Verifica email duplicado
+    result = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
+    if result.scalars().first():
         raise HTTPException(status_code=400, detail="Email já cadastrado")
-    if db.query(Usuario).filter(Usuario.cpf == payload.cpf).first():
+
+    # Verifica CPF duplicado
+    result = await db.execute(select(Usuario).filter(Usuario.cpf == payload.cpf))
+    if result.scalars().first():
         raise HTTPException(status_code=400, detail="CPF já cadastrado")
 
     user = Usuario(
@@ -63,8 +70,11 @@ def cadastrar_usuario(payload: UsuarioCreate, db: Session = Depends(get_db)):
         senha=hash_password(payload.senha),
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
+
+    # Envia email de confirmação em background
+    background_tasks.add_task(enviar_confirmacao_cadastro, user.email, user.nome)
 
     return UsuarioOut(
         id=user.id,
@@ -76,12 +86,15 @@ def cadastrar_usuario(payload: UsuarioCreate, db: Session = Depends(get_db)):
 
 
 @auth_router.post("/login")
-def autenticar_usuario(payload: UsuarioLogin, db: Session = Depends(get_db)):
-    user = db.query(Usuario).filter(Usuario.email == payload.email).first()
+async def autenticar_usuario(payload: UsuarioLogin, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
+    user = result.scalars().first()
+    
     if not user or not verify_password(payload.senha, user.senha):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    prof = db.query(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == user.id).first()
+    result = await db.execute(select(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == user.id))
+    prof = result.scalars().first()
 
     return {
         "id": user.id,
@@ -94,15 +107,17 @@ def autenticar_usuario(payload: UsuarioLogin, db: Session = Depends(get_db)):
 
 
 @auth_router.post("/profissionais", response_model=UsuarioOut, status_code=status.HTTP_201_CREATED)
-def cadastrar_profissional(payload: ProfissionalCreate, db: Session = Depends(get_db)):
-    user = db.get(Usuario, payload.usuario_id)
+async def cadastrar_profissional(payload: ProfissionalCreate, db: AsyncSession = Depends(get_db)):
+    user = await db.get(Usuario, payload.usuario_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    if db.query(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == payload.usuario_id).first():
+    result = await db.execute(select(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == payload.usuario_id))
+    if result.scalars().first():
         raise HTTPException(status_code=400, detail="Usuário já é profissional")
 
-    if db.query(ProfissionalUbs).filter(ProfissionalUbs.registro_profissional == payload.registro_profissional).first():
+    result = await db.execute(select(ProfissionalUbs).filter(ProfissionalUbs.registro_profissional == payload.registro_profissional))
+    if result.scalars().first():
         raise HTTPException(status_code=400, detail="Registro profissional já cadastrado")
 
     prof = ProfissionalUbs(
@@ -111,8 +126,8 @@ def cadastrar_profissional(payload: ProfissionalCreate, db: Session = Depends(ge
         registro_profissional=payload.registro_profissional,
     )
     db.add(prof)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
 
     return UsuarioOut(
         id=user.id,

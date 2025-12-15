@@ -9,59 +9,39 @@ export function Register() {
     cpf: "",
     senha: "",
     confirmarSenha: "",
-    codigo: "",
   });
-  const [status, setStatus] = useState({ loading: false, error: "", success: "", step: 1 });
+  const [status, setStatus] = useState({ loading: false, error: "", success: "" });
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleRequestCode = async () => {
-    const errors = validateRegister(form);
-    if (Object.keys(errors).length) {
-      setStatus({ ...status, error: Object.values(errors)[0] });
-      return;
-    }
-    try {
-      setStatus({ loading: true, error: "", success: "", step: 1 });
-      await api.requestCode(form.email); // requer endpoint no backend
-      setStatus({ loading: false, error: "", success: "Código enviado para seu email", step: 2 });
-    } catch (err) {
-      setStatus({ loading: false, error: err.message, success: "", step: 1 });
-    }
-  };
-
-  const handleConfirmAndSignUp = async (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     const errors = validateRegister(form);
     if (Object.keys(errors).length) {
       setStatus({ ...status, error: Object.values(errors)[0], success: "" });
       return;
     }
-    if (!form.codigo) {
-      setStatus({ ...status, error: "Informe o código recebido por email" });
-      return;
-    }
     try {
-      setStatus({ loading: true, error: "", success: "", step: 2 });
-      await api.confirmCode(form.email, form.codigo); // requer endpoint no backend
+      setStatus({ loading: true, error: "", success: "" });
       await api.signUp({
         nome: form.nome,
         email: form.email,
         cpf: form.cpf,
         senha: form.senha,
       });
-      setStatus({ loading: false, error: "", success: "Cadastro concluído!", step: 3 });
+      setStatus({ loading: false, error: "", success: "Cadastro concluído! Verifique seu email." });
     } catch (err) {
-      setStatus({ loading: false, error: err.message, success: "", step: 2 });
+      setStatus({ loading: false, error: err.message, success: "" });
     }
   };
 
   return (
     <main className="page narrow">
-      <h1>Cadastro</h1>
-      <p className="muted">Crie sua conta para acessar a plataforma.</p>
+      <div className="auth-card">
+        <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Criar Conta</h1>
+        <p className="muted" style={{ marginBottom: '32px' }}>Preencha os dados abaixo para acessar a plataforma.</p>
 
-      <form className="form" onSubmit={handleConfirmAndSignUp}>
+        <form className="form" onSubmit={handleSignUp}>
         <label>
           Nome completo
           <input name="nome" value={form.nome} onChange={onChange} required />
@@ -83,23 +63,35 @@ export function Register() {
           <input name="confirmarSenha" type="password" value={form.confirmarSenha} onChange={onChange} required />
         </label>
 
-        <div className="code-row">
-          <label className="code-input">
-            Código de confirmação
-            <input name="codigo" value={form.codigo} onChange={onChange} placeholder="Digite o código enviado" />
-          </label>
-          <button className="btn btn-secondary" type="button" disabled={status.loading} onClick={handleRequestCode}>
-            Enviar código
-          </button>
-        </div>
-
-        <button className="btn btn-primary" type="submit" disabled={status.loading || status.step < 2}>
-          {status.loading ? "Enviando..." : "Finalizar cadastro"}
+        <button className="btn btn-primary" type="submit" disabled={status.loading}>
+          {status.loading ? (
+            <>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+              Criando conta...
+            </>
+          ) : (
+            <>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <line x1="20" y1="8" x2="20" y2="14"/>
+                <line x1="23" y1="11" x2="17" y2="11"/>
+              </svg>
+              Criar conta
+            </>
+          )}
         </button>
 
-        {status.error && <p className="text-error">{status.error}</p>}
-        {status.success && <p className="text-success">{status.success}</p>}
-      </form>
+          {status.error && <p className="text-error">❌ {status.error}</p>}
+          {status.success && <p className="text-success">✅ {status.success}</p>}
+        </form>
+
+        <p style={{ marginTop: '24px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+          Já tem conta? <a href="/" style={{ color: 'var(--primary)', fontWeight: '600' }}>Fazer login</a>
+        </p>
+      </div>
     </main>
   );
 }

@@ -1,14 +1,9 @@
 # ORM -> Escreve uma classe, como se fosse POO, e ele traduz para SQL
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, func
-from sqlalchemy.orm import declarative_base
-
-
-
-# Base declarativa compartilhada pelas tabelas
-base = declarative_base()
+from database import Base
 
 # Criar classes/tabelas do BD
-class Usuario(base):
+class Usuario(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable= False)
@@ -21,7 +16,7 @@ class Usuario(base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 #Gestor vai cadastrar o profissional da UBS
-class ProfissionalUbs(base):
+class ProfissionalUbs(Base):
     __tablename__ = "profissionais"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
