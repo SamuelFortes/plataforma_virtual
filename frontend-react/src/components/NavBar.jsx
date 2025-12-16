@@ -6,6 +6,7 @@ export function NavBar() {
       <div className="brand">Plataforma UBS</div>
       <nav className="nav-links">
         <Link to="/">Início</Link>
+        <Link to="/diagnostico">Diagnóstico</Link>
         <Link to="/register">Cadastro</Link>
         <a href="#">Ajuda</a>
       </nav>

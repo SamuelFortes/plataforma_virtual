@@ -1,6 +1,7 @@
 # Contexto e PDFs
 /contexto
 *pdf
+/prompts
 
 # Python
 __pycache__/

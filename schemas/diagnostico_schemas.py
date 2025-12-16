@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, field_validator
+
+
+class IndicatorType(str, Enum):
+    NUMERO_ABSOLUTO = "NUMERO_ABSOLUTO"
+    TAXA_PERCENTUAL = "TAXA_PERCENTUAL"
+    TAXA_POR_1000HAB = "TAXA_POR_1000HAB"
+
+
+class IndicatorPrecision(str, Enum):
+    UNIDADE = "UNIDADE"
+    UMA_CASA_DECIMAL = "UMA_CASA_DECIMAL"
+    DUAS_CASAS_DECIMAIS = "DUAS_CASAS_DECIMAIS"
+
+
+class UBSStatus(str, Enum):
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
+
+
+class UBSBase(BaseModel):
+    nome_ubs: Optional[str] = Field(None, max_length=255)
+    cnes: Optional[str] = Field(None, max_length=32)
+    area_atuacao: Optional[str]
+
+    numero_habitantes_ativos: Optional[int] = Field(None, ge=0)
+    numero_microareas: Optional[int] = Field(None, ge=0)
+    numero_familias_cadastradas: Optional[int] = Field(None, ge=0)
+    numero_domicilios: Optional[int] = Field(None, ge=0)
+    domicilios_rurais: Optional[int] = Field(None, ge=0)
+
+    data_inauguracao: Optional[date]
+    data_ultima_reforma: Optional[date]
+
+    descritivos_gerais: Optional[str]
+    observacoes_gerais: Optional[str]
+
+    outros_servicos: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class UBSCreate(UBSBase):
+    # For creation in draft mode we still require some basic fields
+    nome_ubs: str = Field(..., max_length=255)
+    cnes: str = Field(..., max_length=32)
+    area_atuacao: str
+
+
+class UBSUpdate(UBSBase):
+    pass
+
+
+class UBSOut(UBSBase):
+    id: int
+    status: UBSStatus
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+    submitted_at: Optional[datetime]
+
+
+class ServicesCatalogItem(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
+class UBSServicesPayload(BaseModel):
+    service_ids: List[int] = Field(default_factory=list)
+    outros_servicos: Optional[str] = None
+
+
+class UBSServicesOut(BaseModel):
+    services: List[ServicesCatalogItem]
+    outros_servicos: Optional[str]
+
+
+class IndicatorBase(BaseModel):
+    nome_indicador: str = Field(..., max_length=255)
+    tipo_dado: IndicatorType
+    grau_precisao_valor: IndicatorPrecision
+    valor: float = Field(...)
+    periodo_referencia: str = Field(..., max_length=100)
+    observacoes: Optional[str]
+
+
+class IndicatorCreate(IndicatorBase):
+    pass
+
+
+class IndicatorUpdate(BaseModel):
+    nome_indicador: Optional[str] = Field(None, max_length=255)
+    tipo_dado: Optional[IndicatorType]
+    grau_precisao_valor: Optional[IndicatorPrecision]
+    valor: Optional[float]
+    periodo_referencia: Optional[str] = Field(None, max_length=100)
+    observacoes: Optional[str]
+
+
+class IndicatorOut(IndicatorBase):
+    id: int
+    ubs_id: int
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class ProfessionalGroupBase(BaseModel):
+    cargo_funcao: str = Field(..., max_length=255)
+    quantidade: int = Field(..., ge=0)
+    tipo_vinculo: Optional[str] = Field(None, max_length=50)
+    observacoes: Optional[str]
+
+
+class ProfessionalGroupCreate(ProfessionalGroupBase):
+    pass
+
+
+class ProfessionalGroupUpdate(BaseModel):
+    cargo_funcao: Optional[str] = Field(None, max_length=255)
+    quantidade: Optional[int] = Field(None, ge=0)
+    tipo_vinculo: Optional[str] = Field(None, max_length=50)
+    observacoes: Optional[str]
+
+
+class ProfessionalGroupOut(ProfessionalGroupBase):
+    id: int
+    ubs_id: int
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class TerritoryProfileBase(BaseModel):
+    descricao_territorio: str
+    potencialidades_territorio: Optional[str]
+    riscos_vulnerabilidades: Optional[str]
+
+
+class TerritoryProfileCreate(TerritoryProfileBase):
+    pass
+
+
+class TerritoryProfileUpdate(BaseModel):
+    descricao_territorio: Optional[str]
+    potencialidades_territorio: Optional[str]
+    riscos_vulnerabilidades: Optional[str]
+
+
+class TerritoryProfileOut(TerritoryProfileBase):
+    id: int
+    ubs_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class UBSNeedsBase(BaseModel):
+    problemas_identificados: str
+    necessidades_equipamentos_insumos: Optional[str]
+    necessidades_especificas_acs: Optional[str]
+    necessidades_infraestrutura_manutencao: Optional[str]
+
+
+class UBSNeedsCreate(UBSNeedsBase):
+    pass
+
+
+class UBSNeedsUpdate(BaseModel):
+    problemas_identificados: Optional[str]
+    necessidades_equipamentos_insumos: Optional[str]
+    necessidades_especificas_acs: Optional[str]
+    necessidades_infraestrutura_manutencao: Optional[str]
+
+
+class UBSNeedsOut(UBSNeedsBase):
+    id: int
+    ubs_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class PaginatedUBS(BaseModel):
+    items: List[UBSOut]
+    total: int
+    page: int
+    page_size: int
+
+
+class UBSSubmissionMetadata(BaseModel):
+    status: UBSStatus
+    submitted_at: Optional[datetime]
+    submitted_by: Optional[int]
+
+
+class FullDiagnosisOut(BaseModel):
+    ubs: UBSOut
+    services: UBSServicesOut
+    indicators_latest: List[IndicatorOut]
+    professional_groups: List[ProfessionalGroupOut]
+    territory_profile: Optional[TerritoryProfileOut]
+    needs: Optional[UBSNeedsOut]
+    submission: UBSSubmissionMetadata
+
+
+class SubmitDiagnosisResponse(BaseModel):
+    status: UBSStatus
+    submitted_at: datetime
+
+
+class ErrorDetail(BaseModel):
+    field: str
+    message: str
+    code: str
+
+
+class ValidationErrorResponse(BaseModel):
+    detail: str
+    errors: List[ErrorDetail]
+
+
+class UBSSubmitRequest(BaseModel):
+    """Optional payload reserved for future use (e.g. confirm flags)."""
+
+    confirm: bool = True
+
+    @field_validator("confirm")
+    @classmethod
+    def must_be_true(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("Confirmação obrigatória para envio do diagnóstico")
+        return v

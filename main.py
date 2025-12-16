@@ -52,5 +52,7 @@ async def health_check(request: Request, db: AsyncSession = Depends(get_db)):
         return {"status": "error", "database": str(e)}
 
 from routes.auth_routes import auth_router
+from routes.diagnostico_routes import diagnostico_router
 
 app.include_router(auth_router)
+app.include_router(diagnostico_router)
