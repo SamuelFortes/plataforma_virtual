@@ -20,15 +20,15 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Application startup")
+    logger.info("Inicializando aplicação")
     yield
 
     try:
-        logger.info("Disposing database engine...")
+        logger.info("Encerrando engine do banco de dados...")
         await engine.dispose()
-        logger.info("Database engine disposed")
+        logger.info("Engine do banco de dados encerrada")
     except Exception as e:
-        logger.error(f"Error disposing engine: {e}")
+        logger.error(f"Erro ao encerrar engine do banco de dados: {e}")
 
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
