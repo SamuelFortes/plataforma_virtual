@@ -5,16 +5,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_USER = os.getenv("DB_USER", "admin")
-DATABASE_PASSWORD = os.getenv("DB_PASSWORD", "admin")
-DATABASE_HOST = os.getenv("DB_HOST", "localhost")
-DATABASE_PORT = os.getenv("DB_PORT", "5432")
-DATABASE_NAME = os.getenv("DB_NAME", "my_db")
+DATABASE_USER = os.getenv("DB_USER")
+DATABASE_PASSWORD = os.getenv("DB_PASSWORD")
+DATABASE_HOST = os.getenv("DB_HOST")
+DATABASE_PORT = os.getenv("DB_PORT")
+DATABASE_NAME = os.getenv("DB_NAME")
 
-# Use 'postgresql+asyncpg://' em vez de 'postgresql://'
 DATABASE_URL = f"postgresql+psycopg://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 
-# Engine async com asyncpg
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
@@ -25,7 +23,6 @@ engine = create_async_engine(
     pool_recycle=3600,
 )
 
-# Session factory
 AsyncSessionLocal = sessionmaker(
     engine,
     class_=AsyncSession,
@@ -36,7 +33,6 @@ AsyncSessionLocal = sessionmaker(
 
 Base = declarative_base()
 
-# Dependency para FastAPI
 async def get_db():
     async with AsyncSessionLocal() as session:
         try:
