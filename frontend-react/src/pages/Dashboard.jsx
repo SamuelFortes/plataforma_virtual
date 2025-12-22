@@ -11,9 +11,15 @@ export function Dashboard() {
   // Distribuição simples de funcionalidades com base no dashboard_ideal.md
   const commonItems = [
     {
-      title: "Diagnóstico Situacional",
-      desc: "Criar ou atualizar o diagnóstico situacional da UBS.",
+      title: "Novo relatório situacional",
+      desc: "Preencher o formulário de diagnóstico para criar um relatório situacional do zero.",
       to: "/diagnostico",
+      allowedFor: ["profissional"],
+    },
+    {
+      title: "Gerenciar relatórios situacionais",
+      desc: "Ver e gerir rascunhos e relatórios situacionais já criados.",
+      to: "/relatorios",
       allowedFor: ["profissional"],
     },
     {

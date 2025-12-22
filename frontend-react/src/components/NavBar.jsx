@@ -21,7 +21,7 @@ export function NavBar() {
         {token && (
           <>
             <Link to="/dashboard">Dashboard</Link>
-            <Link to="/diagnostico">Diagnóstico</Link>
+            <Link to="/diagnostico">Novo relatório situacional</Link>
             <button
               type="button"
               className="btn btn-secondary"

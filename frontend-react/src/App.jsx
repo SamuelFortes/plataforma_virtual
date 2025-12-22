@@ -4,6 +4,7 @@ import { Home } from "./pages/Home.jsx";
 import { Register } from "./pages/Register.jsx";
 import { DiagnosticoUBS } from "./pages/DiagnosticoUBS.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
+import { RelatoriosSituacionais } from "./pages/RelatoriosSituacionais.jsx";
 import { api } from "./api";
 
 function RequireAuth({ children }) {
@@ -26,6 +27,14 @@ export default function App() {
           element={
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/relatorios"
+          element={
+            <RequireAuth>
+              <RelatoriosSituacionais />
             </RequireAuth>
           }
         />

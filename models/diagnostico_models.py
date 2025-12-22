@@ -26,7 +26,9 @@ class UBS(Base):
     tenant_id = Column(Integer, nullable=False)
     owner_user_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
 
+    # Nome da unidade e nome amigável do relatório situacional gerado para essa UBS
     nome_ubs = Column(String(255), nullable=False)
+    nome_relatorio = Column(String(255), nullable=True)
     cnes = Column(String(32), nullable=False)
     area_atuacao = Column(Text, nullable=False)
 

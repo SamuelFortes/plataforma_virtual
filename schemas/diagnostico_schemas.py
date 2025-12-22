@@ -25,6 +25,7 @@ class UBSStatus(str, Enum):
 
 
 class UBSBase(BaseModel):
+    nome_relatorio: Optional[str] = Field(None, max_length=255)
     nome_ubs: Optional[str] = Field(None, max_length=255)
     cnes: Optional[str] = Field(None, max_length=32)
     area_atuacao: Optional[str]

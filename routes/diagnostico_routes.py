@@ -79,6 +79,7 @@ async def create_ubs(
     ubs = UBS(
         tenant_id=current_user.id,
         owner_user_id=current_user.id,
+        nome_relatorio=payload.nome_relatorio,
         nome_ubs=payload.nome_ubs,
         cnes=payload.cnes,
         area_atuacao=payload.area_atuacao,

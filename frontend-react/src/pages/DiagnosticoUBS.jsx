@@ -15,6 +15,28 @@ export function DiagnosticoUBS() {
           </div>
         </header>
 
+        {/* Campo de nome do relatório */}
+        <section className="form-section">
+          <div className="form-section-header">
+            <h2>Identificação do relatório</h2>
+            <p className="section-subtitle">
+              Defina um nome para este relatório situacional, para facilitar a identificação na lista de
+              rascunhos e relatórios finalizados.
+            </p>
+          </div>
+
+          <div className="form-field full-width">
+            <label className="field-label">
+              Nome do relatório<span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              className="field-input"
+              placeholder="Ex: Diagnóstico Situacional UBS Adalto Pereira Saraçayo - 2025"
+            />
+          </div>
+        </section>
+
         {/* SECTION 1 – Informações gerais da UBS */}
         <section className="form-section">
           <div className="form-section-header">
