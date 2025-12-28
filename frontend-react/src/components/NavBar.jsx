@@ -3,22 +3,22 @@ import { api } from "../api";
 
 export function NavBar() {
   const location = useLocation();
-  const token = api.getToken();
-  const currentUser = api.getCurrentUser();
+  const tokenAcesso = api.getToken();
+  const usuarioAtual = api.getCurrentUser();
 
-  const isAuthPage = location.pathname === "/" || location.pathname === "/register";
+  const estaEmPaginaDeAuth = location.pathname === "/" || location.pathname === "/register";
 
   return (
     <header className="navbar">
       <div className="brand">Plataforma UBS</div>
       <nav className="nav-links">
-        {!token && (
+        {!tokenAcesso && (
           <>
             <Link to="/">Login</Link>
             <Link to="/register">Cadastro</Link>
           </>
         )}
-        {token && (
+        {tokenAcesso && (
           <>
             <Link to="/dashboard">Dashboard</Link>
             <Link to="/diagnostico">Novo relatório situacional</Link>
@@ -30,9 +30,9 @@ export function NavBar() {
             >
               Sair
             </button>
-            {currentUser && (
+            {usuarioAtual && (
               <span className="muted" style={{ marginLeft: "8px", fontSize: "13px" }}>
-                {currentUser.is_profissional ? "Profissional" : "Usuário"}
+                {usuarioAtual.is_profissional ? "Profissional" : "Usuário"}
               </span>
             )}
           </>

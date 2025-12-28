@@ -7,9 +7,9 @@ import { Dashboard } from "./pages/Dashboard.jsx";
 import { RelatoriosSituacionais } from "./pages/RelatoriosSituacionais.jsx";
 import { api } from "./api";
 
-function RequireAuth({ children }) {
-  const token = api.getToken();
-  if (!token) {
+function RequerAutenticacao({ children }) {
+  const tokenAcesso = api.getToken();
+  if (!tokenAcesso) {
     return <Navigate to="/" replace />;
   }
   return children;
@@ -25,25 +25,25 @@ export default function App() {
         <Route
           path="/dashboard"
           element={
-            <RequireAuth>
+            <RequerAutenticacao>
               <Dashboard />
-            </RequireAuth>
+            </RequerAutenticacao>
           }
         />
         <Route
           path="/relatorios"
           element={
-            <RequireAuth>
+            <RequerAutenticacao>
               <RelatoriosSituacionais />
-            </RequireAuth>
+            </RequerAutenticacao>
           }
         />
         <Route
           path="/diagnostico"
           element={
-            <RequireAuth>
+            <RequerAutenticacao>
               <DiagnosticoUBS />
-            </RequireAuth>
+            </RequerAutenticacao>
           }
         />
       </Routes>

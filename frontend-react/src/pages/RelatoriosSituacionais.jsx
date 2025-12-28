@@ -23,21 +23,21 @@ export function RelatoriosSituacionais() {
 
   const relatoriosFiltrados = useMemo(() => {
     if (filtroStatus === "todos") return relatorios;
-    return relatorios.filter((r) => r.status === filtroStatus);
+    return relatorios.filter((relatorio) => relatorio.status === filtroStatus);
   }, [filtroStatus, relatorios]);
 
-  const labelStatus = (status) => {
+  const rotuloStatus = (status) => {
     if (status === "rascunho") return "Rascunho";
     if (status === "finalizado") return "Finalizado";
     return status;
   };
 
-  const handleDelete = (id) => {
-    const confirmar = window.confirm(
+  const lidarComExclusao = (id) => {
+    const confirmarExclusao = window.confirm(
       "Tem certeza que deseja excluir este relatório? Essa ação não poderá ser desfeita."
     );
-    if (!confirmar) return;
-    setRelatorios((prev) => prev.filter((r) => r.id !== id));
+    if (!confirmarExclusao) return;
+    setRelatorios((anterior) => anterior.filter((relatorio) => relatorio.id !== id));
   };
 
   return (
@@ -99,7 +99,7 @@ export function RelatoriosSituacionais() {
                   <td style={{ padding: "8px" }}>{r.nomeUbs}</td>
                   <td style={{ padding: "8px" }}>{r.atualizadoEm}</td>
                   <td style={{ padding: "8px" }}>
-                    <span className="pill-badge">{labelStatus(r.status)}</span>
+                    <span className="pill-badge">{rotuloStatus(r.status)}</span>
                   </td>
                   <td style={{ padding: "8px", textAlign: "right" }}>
                     <div style={{ display: "inline-flex", gap: 8 }}>
@@ -115,7 +115,7 @@ export function RelatoriosSituacionais() {
                       <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={() => handleDelete(r.id)}
+                        onClick={() => lidarComExclusao(r.id)}
                         title="Excluir relatório"
                       >
                         🗑

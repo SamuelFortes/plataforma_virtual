@@ -5,11 +5,11 @@ import { Link } from "react-router-dom";
 // Por enquanto, sempre mostramos a visão completa de gestor
 // para qualquer usuário autenticado (mais simples para testar a UI).
 export function Dashboard() {
-  const currentUser = api.getCurrentUser();
-  const roleLabel = "Gestor da UBS";
+  const usuarioAtual = api.getCurrentUser();
+  const rotuloPapel = "Gestor da UBS";
 
   // Distribuição simples de funcionalidades com base no dashboard_ideal.md
-  const commonItems = [
+  const itensComuns = [
     {
       title: "Novo relatório situacional",
       desc: "Preencher o formulário de diagnóstico para criar um relatório situacional do zero.",
@@ -42,7 +42,7 @@ export function Dashboard() {
     },
   ];
 
-  const gestorExtras = [
+  const extrasGestor = [
     {
       title: "Gestão de Equipes e Microáreas",
       desc: "Visão de equipes da ESF, microáreas e território (futuro).",
@@ -58,7 +58,7 @@ export function Dashboard() {
   ];
 
   // Exibe todos os itens (visão de gestor), independentemente do papel salvo.
-  const items = [...commonItems, ...gestorExtras];
+  const itens = [...itensComuns, ...extrasGestor];
 
   return (
     <main className="page">
@@ -67,23 +67,23 @@ export function Dashboard() {
           <p className="eyebrow">Bem-vindo à plataforma UBS</p>
           <h1>Menu principal</h1>
           <p className="muted">
-            Você está autenticado como <strong>{roleLabel}</strong>. Nesta versão de testes, todas as
+            Você está autenticado como <strong>{rotuloPapel}</strong>. Nesta versão de testes, todas as
             funcionalidades do gestor estão visíveis para qualquer usuário autenticado.
           </p>
         </div>
       </section>
 
       <section className="card-grid">
-        {items.map((card) => (
-          <article className="card" key={card.title}>
-            <h3>{card.title}</h3>
-            <p>{card.desc}</p>
-            {card.to === "#" ? (
+        {itens.map((cartao) => (
+          <article className="card" key={cartao.title}>
+            <h3>{cartao.title}</h3>
+            <p>{cartao.desc}</p>
+            {cartao.to === "#" ? (
               <button className="btn btn-primary" type="button" disabled>
                 Em desenvolvimento
               </button>
             ) : (
-              <Link className="btn btn-primary" to={card.to}>
+              <Link className="btn btn-primary" to={cartao.to}>
                 Acessar
               </Link>
             )}

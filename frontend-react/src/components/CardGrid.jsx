@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 export function CardGrid() {
-  const cards = [
+  const cartoes = [
     {
       title: "Relatório Situacional",
       desc: "Crie ou atualize o relatório da sua UBS.",
@@ -30,17 +30,17 @@ export function CardGrid() {
 
   return (
     <section className="card-grid">
-      {cards.map((card) => (
-        <article className="card" key={card.title}>
-          <h3>{card.title}</h3>
-          <p>{card.desc}</p>
-          {card.to ? (
-            <Link className="btn btn-primary" to={card.to}>
-              {card.cta}
+      {cartoes.map((cartao) => (
+        <article className="card" key={cartao.title}>
+          <h3>{cartao.title}</h3>
+          <p>{cartao.desc}</p>
+          {cartao.to ? (
+            <Link className="btn btn-primary" to={cartao.to}>
+              {cartao.cta}
             </Link>
           ) : (
             <button className="btn btn-primary" type="button">
-              {card.cta}
+              {cartao.cta}
             </button>
           )}
         </article>

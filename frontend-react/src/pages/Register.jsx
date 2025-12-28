@@ -1,40 +1,41 @@
 import { useState } from "react";
 import { api } from "../api";
-import { validateRegister } from "../utils/validation";
+import { validarCadastro } from "../utils/validation";
 
 export function Register() {
-  const [form, setForm] = useState({
+  const [formulario, setFormulario] = useState({
     nome: "",
     email: "",
     cpf: "",
     senha: "",
     confirmarSenha: "",
   });
-  const [status, setStatus] = useState({ loading: false, error: "", success: "" });
+  const [estado, setEstado] = useState({ carregando: false, erro: "", sucesso: "" });
 
-  const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const aoAlterar = (e) =>
+    setFormulario({ ...formulario, [e.target.name]: e.target.value });
 
-  const handleSignUp = async (e) => {
+  const lidarComCadastro = async (e) => {
     e.preventDefault();
-    const errors = validateRegister(form);
-    if (Object.keys(errors).length) {
-      setStatus({ ...status, error: Object.values(errors)[0], success: "" });
+    const erros = validarCadastro(formulario);
+    if (Object.keys(erros).length) {
+      setEstado({ ...estado, erro: Object.values(erros)[0], sucesso: "" });
       return;
     }
     try {
-      setStatus({ loading: true, error: "", success: "" });
+      setEstado({ carregando: true, erro: "", sucesso: "" });
       await api.signUp({
-        nome: form.nome,
-        email: form.email,
-        cpf: form.cpf,
-        senha: form.senha,
+        nome: formulario.nome,
+        email: formulario.email,
+        cpf: formulario.cpf,
+        senha: formulario.senha,
       });
-      setStatus({ loading: false, error: "", success: "Cadastro concluído! Você já pode fazer login." });
+      setEstado({ carregando: false, erro: "", sucesso: "Cadastro concluído! Você já pode fazer login." });
       setTimeout(() => {
         window.location.href = "/";
       }, 2000);
     } catch (err) {
-      setStatus({ loading: false, error: err.message, success: "" });
+      setEstado({ carregando: false, erro: err.message, sucesso: "" });
     }
   };
 
@@ -44,30 +45,30 @@ export function Register() {
         <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Criar Conta</h1>
         <p className="muted" style={{ marginBottom: '32px' }}>Preencha os dados abaixo para acessar a plataforma.</p>
 
-        <form className="form" onSubmit={handleSignUp}>
+        <form className="form" onSubmit={lidarComCadastro}>
         <label>
           Nome completo
-          <input name="nome" value={form.nome} onChange={onChange} required />
+          <input name="nome" value={formulario.nome} onChange={aoAlterar} required />
         </label>
         <label>
           Email
-          <input name="email" type="email" value={form.email} onChange={onChange} required />
+          <input name="email" type="email" value={formulario.email} onChange={aoAlterar} required />
         </label>
         <label>
           CPF
-          <input name="cpf" value={form.cpf} onChange={onChange} required />
+          <input name="cpf" value={formulario.cpf} onChange={aoAlterar} required />
         </label>
         <label>
           Senha (mínimo 8 caracteres, 1 maiúscula, 1 minúscula, 1 número)
-          <input name="senha" type="password" value={form.senha} onChange={onChange} required />
+          <input name="senha" type="password" value={formulario.senha} onChange={aoAlterar} required />
         </label>
         <label>
           Confirmar senha
-          <input name="confirmarSenha" type="password" value={form.confirmarSenha} onChange={onChange} required />
+          <input name="confirmarSenha" type="password" value={formulario.confirmarSenha} onChange={aoAlterar} required />
         </label>
 
-        <button className="btn btn-primary" type="submit" disabled={status.loading}>
-          {status.loading ? (
+        <button className="btn btn-primary" type="submit" disabled={estado.carregando}>
+          {estado.carregando ? (
             <>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
@@ -87,8 +88,8 @@ export function Register() {
           )}
         </button>
 
-          {status.error && <p className="text-error">❌ {status.error}</p>}
-          {status.success && <p className="text-success">✅ {status.success}</p>}
+          {estado.erro && <p className="text-error">❌ {estado.erro}</p>}
+          {estado.sucesso && <p className="text-success">✅ {estado.sucesso}</p>}
         </form>
 
         <p style={{ marginTop: '24px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>

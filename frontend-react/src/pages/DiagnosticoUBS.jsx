@@ -1,11 +1,11 @@
 import React from "react";
 
-// High-fidelity "Diagnóstico Situacional da UBS" form page
+// Página do formulário "Diagnóstico Situacional da UBS"
 export function DiagnosticoUBS() {
   return (
     <main className="diagnostico-page">
       <section className="diagnostico-card" aria-label="Formulário de diagnóstico situacional da UBS">
-        {/* Header band */}
+        {/* Faixa de cabeçalho */}
         <header className="diagnostico-header">
           <div className="diagnostico-header-content">
             <h1>Diagnóstico Situacional da UBS</h1>
@@ -37,13 +37,13 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* SECTION 1 – Informações gerais da UBS */}
+        {/* SEÇÃO 1 – Informações gerais da UBS */}
         <section className="form-section">
           <div className="form-section-header">
             <h2>Informações gerais da UBS</h2>
           </div>
 
-          {/* Row 1 */}
+          {/* Linha 1 */}
           <div className="field-grid field-grid-3">
             <div className="form-field">
               <label className="field-label">
@@ -75,7 +75,7 @@ export function DiagnosticoUBS() {
             </div>
           </div>
 
-          {/* Row 2 */}
+          {/* Linha 2 */}
           <div className="field-grid field-grid-5 compact-row">
             <div className="form-field">
               <label className="field-label">
@@ -107,7 +107,7 @@ export function DiagnosticoUBS() {
             </div>
           </div>
 
-          {/* Row 3 */}
+          {/* Linha 3 */}
           <div className="field-grid field-grid-3">
             <div className="form-field">
               <label className="field-label">Data de inauguração</label>
@@ -133,7 +133,7 @@ export function DiagnosticoUBS() {
             </div>
           </div>
 
-          {/* Row 4 */}
+          {/* Linha 4 */}
           <div className="form-field full-width">
             <label className="field-label">Descritivos gerais</label>
             <textarea
@@ -143,7 +143,7 @@ export function DiagnosticoUBS() {
             />
           </div>
 
-          {/* Row 5 */}
+          {/* Linha 5 */}
           <div className="form-field full-width">
             <label className="field-label">Observações gerais</label>
             <textarea
@@ -154,7 +154,7 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* SECTION 2 – Serviços oferecidos pela UBS */}
+        {/* SEÇÃO 2 – Serviços oferecidos pela UBS */}
         <section className="form-section">
           <div className="form-section-header">
             <h2>Serviços oferecidos pela UBS</h2>
@@ -189,10 +189,10 @@ export function DiagnosticoUBS() {
               "Visitas domiciliares",
               "Atividades coletivas e preventivas",
               "Grupos operativos (gestantes, tabagismo, etc.)",
-            ].map((service) => (
-              <label key={service} className="service-option">
+            ].map((servico) => (
+              <label key={servico} className="service-option">
                 <input type="checkbox" />
-                <span>{service}</span>
+                <span>{servico}</span>
               </label>
             ))}
           </div>
@@ -207,7 +207,7 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* SECTION 3 – Indicadores epidemiológicos */}
+        {/* SEÇÃO 3 – Indicadores epidemiológicos */}
         <section className="form-section">
           <div className="form-section-header">
             <h2>Indicadores epidemiológicos</h2>
@@ -348,7 +348,7 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* SECTION 4 – Profissionais da equipe */}
+        {/* SEÇÃO 4 – Profissionais da equipe */}
         <section className="form-section">
           <div className="form-section-header">
             <h2>Profissionais da equipe</h2>
@@ -481,7 +481,7 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* SECTION 5 – Território e determinantes sociais */}
+        {/* SEÇÃO 5 – Território e determinantes sociais */}
         <section className="form-section">
           <div className="form-section-header">
             <h2>Território e determinantes sociais</h2>
@@ -517,7 +517,7 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* SECTION 6 – Problemas e necessidades da UBS */}
+        {/* SEÇÃO 6 – Problemas e necessidades da UBS */}
         <section className="form-section">
           <div className="form-section-header">
             <h2>Problemas e necessidades da UBS</h2>
@@ -562,7 +562,7 @@ export function DiagnosticoUBS() {
           </div>
         </section>
 
-        {/* Bottom action bar */}
+        {/* Barra de ações inferior */}
         <div className="bottom-action-bar">
           <button type="button" className="btn btn-outline">
             Salvar rascunho

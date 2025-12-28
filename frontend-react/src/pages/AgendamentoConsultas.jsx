@@ -2,7 +2,7 @@ import { useState } from "react";
 
 // Página de marcação de consultas (somente frontend por enquanto)
 export function AgendamentoConsultas() {
-  const [form, setForm] = useState({
+  const [formulario, setFormulario] = useState({
     paciente: "",
     data: "",
     hora: "",
@@ -11,20 +11,20 @@ export function AgendamentoConsultas() {
   });
   const [agendamentos, setAgendamentos] = useState([]);
 
-  const onChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const aoAlterar = (e) => {
+    setFormulario((anterior) => ({ ...anterior, [e.target.name]: e.target.value }));
   };
 
-  const onSubmit = (e) => {
+  const aoEnviar = (e) => {
     e.preventDefault();
-    if (!form.paciente || !form.data || !form.hora) return;
+    if (!formulario.paciente || !formulario.data || !formulario.hora) return;
 
-    const novo = {
+    const novoAgendamento = {
       id: Date.now(),
-      ...form,
+      ...formulario,
     };
-    setAgendamentos((prev) => [novo, ...prev]);
-    setForm({ paciente: "", data: "", hora: "", tipo: "Consulta médica", observacoes: "" });
+    setAgendamentos((anterior) => [novoAgendamento, ...anterior]);
+    setFormulario({ paciente: "", data: "", hora: "", tipo: "Consulta médica", observacoes: "" });
   };
 
   return (
@@ -41,15 +41,15 @@ export function AgendamentoConsultas() {
       </section>
 
       <section className="diagnostico-card" style={{ marginTop: 24 }}>
-        <form className="form" onSubmit={onSubmit}>
+        <form className="form" onSubmit={aoEnviar}>
           <div className="field-grid field-grid-3">
             <label className="form-field">
               <span className="field-label">Nome do paciente*</span>
               <input
                 className="field-input"
                 name="paciente"
-                value={form.paciente}
-                onChange={onChange}
+                value={formulario.paciente}
+                onChange={aoAlterar}
                 placeholder="Ex: Maria da Silva"
                 required
               />
@@ -60,8 +60,8 @@ export function AgendamentoConsultas() {
                 className="field-input"
                 type="date"
                 name="data"
-                value={form.data}
-                onChange={onChange}
+                value={formulario.data}
+                onChange={aoAlterar}
                 required
               />
             </label>
@@ -71,8 +71,8 @@ export function AgendamentoConsultas() {
                 className="field-input"
                 type="time"
                 name="hora"
-                value={form.hora}
-                onChange={onChange}
+                value={formulario.hora}
+                onChange={aoAlterar}
                 required
               />
             </label>
@@ -84,8 +84,8 @@ export function AgendamentoConsultas() {
               <select
                 className="field-input"
                 name="tipo"
-                value={form.tipo}
-                onChange={onChange}
+                value={formulario.tipo}
+                onChange={aoAlterar}
               >
                 <option>Consulta médica</option>
                 <option>Consulta de enfermagem</option>
@@ -100,8 +100,8 @@ export function AgendamentoConsultas() {
             <textarea
               className="field-input textarea"
               name="observacoes"
-              value={form.observacoes}
-              onChange={onChange}
+              value={formulario.observacoes}
+              onChange={aoAlterar}
               rows={3}
               placeholder="Informações adicionais sobre o motivo da consulta, necessidades específicas, etc."
             />
@@ -117,14 +117,14 @@ export function AgendamentoConsultas() {
 
       {agendamentos.length > 0 && (
         <section className="card-grid" style={{ marginTop: 32 }}>
-          {agendamentos.map((a) => (
-            <article className="card" key={a.id}>
-              <h3>{a.paciente}</h3>
+          {agendamentos.map((agendamento) => (
+            <article className="card" key={agendamento.id}>
+              <h3>{agendamento.paciente}</h3>
               <p>
-                {a.data} às {a.hora}
+                {agendamento.data} às {agendamento.hora}
               </p>
-              <p className="muted">{a.tipo}</p>
-              {a.observacoes && <p>{a.observacoes}</p>}
+              <p className="muted">{agendamento.tipo}</p>
+              {agendamento.observacoes && <p>{agendamento.observacoes}</p>}
             </article>
           ))}
         </section>

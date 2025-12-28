@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const BASE_API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Utilidades de autenticação: token JWT e usuário atual
 function getToken() {
@@ -22,10 +22,10 @@ function setCurrentUser(user) {
 }
 
 function getCurrentUser() {
-  const raw = localStorage.getItem("current_user");
-  if (!raw) return null;
+  const bruto = localStorage.getItem("current_user");
+  if (!bruto) return null;
   try {
-    return JSON.parse(raw);
+    return JSON.parse(bruto);
   } catch {
     return null;
   }
@@ -37,50 +37,50 @@ function clearAuth() {
 }
 
 async function request(path, { method = "GET", body, headers = {}, requiresAuth = false } = {}) {
-  const requestHeaders = {
+  const cabecalhosRequisicao = {
     "Content-Type": "application/json",
     ...headers,
   };
 
   if (requiresAuth) {
-    const token = getToken();
-    if (token) {
-      requestHeaders["Authorization"] = `Bearer ${token}`;
+    const tokenAcesso = getToken();
+    if (tokenAcesso) {
+      cabecalhosRequisicao["Authorization"] = `Bearer ${tokenAcesso}`;
     }
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const resposta = await fetch(`${BASE_API}${path}`, {
     method,
-    headers: requestHeaders,
+    headers: cabecalhosRequisicao,
     body: body ? JSON.stringify(body) : undefined,
   });
   
-  const data = await res.json().catch(() => ({}));
+  const dados = await resposta.json().catch(() => ({}));
   
-  if (!res.ok) {
-    if (res.status === 401 && requiresAuth) {
+  if (!resposta.ok) {
+    if (resposta.status === 401 && requiresAuth) {
       clearAuth();
       window.location.href = "/";
     }
-    const msg = data.detail || data.message || "Erro ao comunicar com o servidor";
-    throw new Error(msg);
+    const mensagem = dados.detail || dados.message || "Erro ao comunicar com o servidor";
+    throw new Error(mensagem);
   }
   
-  return data;
+  return dados;
 }
 
 export const api = {
   login: async (payload) => {
-    const data = await request("/auth/login", { method: "POST", body: payload });
-    if (data.access_token) {
-      setToken(data.access_token);
+    const dados = await request("/auth/login", { method: "POST", body: payload });
+    if (dados.access_token) {
+      setToken(dados.access_token);
     }
-     if (data.user) {
+     if (dados.user) {
        // Papel básico definido exclusivamente pelo backend
-       const role = data.user.is_profissional ? "profissional" : "usuario";
-       setCurrentUser({ ...data.user, role });
+       const papel = dados.user.is_profissional ? "profissional" : "usuario";
+       setCurrentUser({ ...dados.user, role: papel });
      }
-    return data;
+    return dados;
   },
   
   signUp: (payload) => request("/auth/register", { method: "POST", body: payload }),
