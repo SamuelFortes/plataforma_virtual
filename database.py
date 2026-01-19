@@ -7,21 +7,42 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Em produção (Render), a DATABASE_URL é fornecida diretamente.
-    # O código abaixo adapta a URL para o dialeto do SQLAlchemy e mantém
-    # a configuração original para desenvolvimento local.
-if "+psycopg" not in DATABASE_URL: # Verifica se o driver já não está presente
-    if DATABASE_URL.startswith("postgres://"):
-            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
-    elif DATABASE_URL.startswith("postgresql://"):
-            DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
-else:
-    DATABASE_USER = os.getenv("DB_USER")
-    DATABASE_PASSWORD = os.getenv("DB_PASSWORD")
-    DATABASE_HOST = os.getenv("DB_HOST")
-    DATABASE_PORT = os.getenv("DB_PORT")
-    DATABASE_NAME = os.getenv("DB_NAME")
-    DATABASE_URL = f"postgresql+psycopg://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
+
+def _normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://") and "+psycopg" not in url:
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+def _build_database_url_from_parts() -> str | None:
+    database_user = os.getenv("DB_USER")
+    database_password = os.getenv("DB_PASSWORD")
+    database_host = os.getenv("DB_HOST")
+    database_port = os.getenv("DB_PORT")
+    database_name = os.getenv("DB_NAME")
+
+    if not all([database_user, database_password, database_host, database_port, database_name]):
+        return None
+
+    return (
+        f"postgresql+psycopg://{database_user}:{database_password}"
+        f"@{database_host}:{database_port}/{database_name}"
+    )
+
+
+# Em produção (Render), a DATABASE_URL costuma vir pronta.
+# Em dev, aceitamos DB_* (monta URL) e, se nada for informado, caímos para SQLite.
+if not DATABASE_URL:
+    DATABASE_URL = _build_database_url_from_parts()
+
+if not DATABASE_URL:
+    # Fallback para desenvolvimento local sem variáveis de ambiente.
+    # Requer o pacote `aiosqlite`.
+    DATABASE_URL = "sqlite+aiosqlite:///./dev.db"
+
+DATABASE_URL = _normalize_database_url(DATABASE_URL)
 
 #Criando a engine
 #Engine é um objeto do SQLAlchemy usado
@@ -31,10 +52,11 @@ engine = create_async_engine(
     DATABASE_URL,
     echo=False,
     future=True,
-    pool_pre_ping=True, #"pré-ping" antes de entregar a conexão
-    pool_size=5, #estoque de conexões
-    max_overflow=10, #limite de conexões extras
-    pool_recycle=3600, #timer para reabrir conexões
+    # Args de pool abaixo são mais relevantes para Postgres; para SQLite mantemos simples.
+    pool_pre_ping=not DATABASE_URL.startswith("sqlite"),
+    pool_size=5 if not DATABASE_URL.startswith("sqlite") else None,
+    max_overflow=10 if not DATABASE_URL.startswith("sqlite") else None,
+    pool_recycle=3600 if not DATABASE_URL.startswith("sqlite") else None,
 )
 
 #Fábrica de sessõe
