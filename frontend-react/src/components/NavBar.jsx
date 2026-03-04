@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   BellIcon, 
@@ -13,7 +13,8 @@ import {
   UsersIcon,
   LifebuoyIcon,
   EnvelopeIcon,
-  KeyIcon
+  KeyIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { ubsService } from '../services/ubsService';
 
@@ -22,6 +23,8 @@ const NavBar = ({ isDark, onToggleTheme }) => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
   const [hasUbs, setHasUbs] = useState(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -50,7 +53,19 @@ const NavBar = ({ isDark, onToggleTheme }) => {
     return () => { active = false; };
   }, [canSetupUbs]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!user) return null;
+
+  const userInitial = user.nome ? user.nome.charAt(0).toUpperCase() : '?';
 
   return (
     <nav className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-30 w-full transition-all duration-300">
@@ -81,48 +96,6 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 Dashboard
               </Link>
 
-              {['PROFISSIONAL', 'GESTOR', 'ACS'].includes(role) && (
-                <Link
-                  to="/materiais-educativos"
-                  className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive('/materiais-educativos')
-                      ? 'bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                  }`}
-                >
-                  <BookOpenIcon className="w-5 h-5 mr-2" />
-                  Materiais
-                </Link>
-              )}
-
-              {['PROFISSIONAL', 'GESTOR', 'ACS'].includes(role) && (
-                <Link
-                  to="/cronograma"
-                  className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive('/cronograma')
-                      ? 'bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                  }`}
-                >
-                  <CalendarIcon className="w-5 h-5 mr-2" />
-                  Cronograma
-                </Link>
-              )}
-
-              {canSetupUbs && (
-                <Link
-                  to="/setup-ubs"
-                  className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive('/setup-ubs')
-                      ? 'bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                  }`}
-                >
-                  <ClipboardDocumentListIcon className="w-5 h-5 mr-2" />
-                  {hasUbs ? 'Editar UBS' : 'Configurar UBS'}
-                </Link>
-              )}
-              
               {(role === 'GESTOR' || role === 'RECEPCAO') && (
                 <Link
                   to="/notificacoes"
@@ -150,58 +123,63 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                   Mensagens
                 </Link>
               )}
-
-              {(role === 'GESTOR' || role === 'RECEPCAO') && (
-                <Link
-                  to="/redefinir-senha"
-                  className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive('/redefinir-senha')
-                      ? 'bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-300'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                  }`}
-                >
-                  <KeyIcon className="w-5 h-5 mr-2" />
-                  Redefinir senha
-                </Link>
-              )}
             </div>
           </div>
 
-            <div className="flex items-center space-x-6">
-              <button
-                type="button"
-                onClick={onToggleTheme}
-                className="group flex items-center text-gray-500 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white transition-all duration-200"
-                aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
-              >
-                <div className="p-2 rounded-full group-hover:bg-gray-100 dark:group-hover:bg-slate-800 transition-colors">
-                  {isDark ? (
-                    <SunIcon className="h-5 w-5" />
-                  ) : (
-                    <MoonIcon className="h-5 w-5" />
-                  )}
-                </div>
-              </button>
+          <div className="flex items-center space-x-6">
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="group flex items-center text-gray-500 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white transition-all duration-200"
+              aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            >
+              <div className="p-2 rounded-full group-hover:bg-gray-100 dark:group-hover:bg-slate-800 transition-colors">
+                {isDark ? (
+                  <SunIcon className="h-5 w-5" />
+                ) : (
+                  <MoonIcon className="h-5 w-5" />
+                )}
+              </div>
+            </button>
 
-              <div className="hidden sm:flex flex-col items-end border-r border-gray-200 dark:border-slate-700 pr-6 mr-2">
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+            <div className="hidden sm:flex flex-col items-end border-r border-gray-200 dark:border-slate-700 pr-6 mr-2">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 Bem-vindo, {user.nome}!
               </span>
-                <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center capitalize">
+              <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center capitalize">
                 <UserCircleIcon className="w-3 h-3 mr-1" />
                 Acesso: {roleLabel}
               </span>
             </div>
 
-            <button
-              onClick={handleLogout}
-                className="group flex items-center text-gray-500 hover:text-red-600 dark:text-slate-300 dark:hover:text-red-400 font-medium transition-all duration-200"
-            >
-                <div className="p-2 rounded-full group-hover:bg-red-50 dark:group-hover:bg-red-950 transition-colors mr-1">
-                <ArrowRightOnRectangleIcon className="h-6 w-6" />
-              </div>
-              <span className="hidden sm:inline">Sair</span>
-            </button>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold hover:bg-blue-200 transition-colors dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700 focus:outline-none"
+              >
+                {userInitial}
+              </button>
+              
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-slate-700 z-50">
+                  <Link
+                    to="/redefinir-senha"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <Cog6ToothIcon className="w-4 h-4 mr-2" />
+                    Configurações
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-left"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-4 h-4 mr-2" />
+                    Sair
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

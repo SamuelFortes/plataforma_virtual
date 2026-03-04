@@ -105,14 +105,6 @@ const Dashboard = () => {
               Você está autenticado como <strong className="capitalize">{user?.role?.toLowerCase() || 'Usuário'}</strong>.
             </p>
           </div>
-          {(role === 'GESTOR' || role === 'RECEPCAO') && (
-            <Link
-              to="/redefinir-senha"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Redefinir senha
-            </Link>
-          )}
         </div>
       </div>
 
