@@ -24,7 +24,7 @@ const Agendamento = () => {
     user = null;
   }
   
-  const isStaff = ['PROFISSIONAL', 'GESTOR', 'RECEPCAO', 'ACS'].includes(user?.role);
+  const isStaff = ['PROFISSIONAL', 'GESTOR'].includes(user?.role);
 
   useEffect(() => {
     if (activeTab === 'meus') {

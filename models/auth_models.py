@@ -9,8 +9,9 @@ class Usuario(Base):
     email = Column(String(200), nullable=False, unique=True)
     senha = Column(String(255), nullable=False)
     cpf = Column(String(14), nullable=False, unique=True)
-    # USER | PROFISSIONAL | GESTOR | RECEPCAO | ACS
+    # USER | PROFISSIONAL | GESTOR
     role = Column(String(20), nullable=False, default="USER")
+    cargo = Column(String(100), nullable=True)
     welcome_email_sent = Column(Boolean, default=False, nullable=True)
     ativo = Column(Boolean, default=True, nullable=False)
     tentativas_login = Column(Integer, default=0, nullable=False)
@@ -37,6 +38,14 @@ class LoginAttempt(Base):
     ip_address = Column(String(45), nullable=True)
     sucesso = Column(Boolean, nullable=False)
     motivo = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Cargo(Base):
+    __tablename__ = "cargos"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String(255), nullable=False, unique=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

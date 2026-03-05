@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import re
 
 from database import get_db
-from models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest
+from models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest, Cargo
 from utils.jwt_handler import create_access_token
 from utils.cpf_validator import validate_cpf
 from utils.deps import get_current_active_user, get_current_gestor_user
@@ -24,13 +24,21 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
 
-
 class UsuarioCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
     senha: str = Field(..., min_length=8, max_length=100)
     cpf: str = Field(..., min_length=11, max_length=14)
-    role: Literal["USER", "GESTOR", "RECEPCAO", "ACS"] = "USER"
+    role: Literal["USER", "PROFISSIONAL", "GESTOR"] = "USER"
+    cargo: str | None = Field(None, max_length=100)
+
+    @field_validator('cargo')
+    @classmethod
+    def validate_cargo(cls, v, info):
+        role = info.data.get('role', 'USER')
+        if role == 'PROFISSIONAL' and not v:
+            raise ValueError('Cargo é obrigatório para profissionais')
+        return v
     
     @field_validator('nome')
     @classmethod
@@ -129,6 +137,7 @@ class UsuarioOut(BaseModel):
     cpf: str
     is_profissional: bool
     role: str
+    cargo: str | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -138,7 +147,7 @@ async def get_me(
     current_user: Usuario = Depends(get_current_active_user),
 ):
     role = (current_user.role or "USER").upper()
-    is_prof = role in ("PROFISSIONAL", "GESTOR", "ACS")
+    is_prof = role in ("PROFISSIONAL", "GESTOR")
     if not is_prof:
         resultado = await db.execute(
             select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id, ProfissionalUbs.ativo == True)
@@ -152,6 +161,7 @@ async def get_me(
         "cpf": current_user.cpf,
         "is_profissional": is_prof,
         "role": role,
+        "cargo": current_user.cargo,
     }
 
 
@@ -260,33 +270,40 @@ async def register_user(
     payload: UsuarioCreate, 
     db: AsyncSession = Depends(get_db)
 ):
+    if payload.cargo:
+        resultado = await db.execute(select(Cargo).where(Cargo.nome == payload.cargo))
+        if not resultado.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"Cargo '{payload.cargo}' não existe. Consulte os cargos disponíveis.")
+
     resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
     if resultado.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email já cadastrado")
-    
+
     resultado = await db.execute(select(Usuario).filter(Usuario.cpf == payload.cpf))
     if resultado.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="CPF já cadastrado")
-    
+
     usuario = Usuario(
         nome=payload.nome,
         email=payload.email,
         senha=hash_password(payload.senha),
         cpf=payload.cpf,
-        role="USER",
-        welcome_email_sent=False # Default explicit
+        role=payload.role,
+        cargo=payload.cargo if payload.role == "PROFISSIONAL" else None,
+        welcome_email_sent=False,
     )
     db.add(usuario)
     await db.commit()
     await db.refresh(usuario)
-    
+
     return UsuarioOut(
         id=usuario.id,
         nome=usuario.nome,
         email=usuario.email,
         cpf=usuario.cpf,
-        is_profissional=False,
+        is_profissional=usuario.role in ("PROFISSIONAL", "GESTOR"),
         role=usuario.role or "USER",
+        cargo=usuario.cargo,
     )
 
 
@@ -299,7 +316,7 @@ async def create_acs_user(
     current_user: Usuario = Depends(get_current_active_user),
 ):
     role = (current_user.role or "USER").upper()
-    if role not in ("GESTOR", "RECEPCAO"):
+    if role != "GESTOR" and current_user.cargo != "Recepcionista":
         raise HTTPException(status_code=403, detail="Acesso restrito à recepção ou gestão")
 
     resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
@@ -315,7 +332,8 @@ async def create_acs_user(
         email=payload.email,
         senha=hash_password(payload.senha),
         cpf=payload.cpf,
-        role="ACS",
+        role="PROFISSIONAL",
+        cargo="Agente Comunitário de Saúde",
         welcome_email_sent=False,
     )
     db.add(usuario)
@@ -327,8 +345,9 @@ async def create_acs_user(
         nome=usuario.nome,
         email=usuario.email,
         cpf=usuario.cpf,
-        is_profissional=False,
-        role=usuario.role or "ACS",
+        is_profissional=True,
+        role=usuario.role or "PROFISSIONAL",
+        cargo=usuario.cargo,
     )
 
 
@@ -341,7 +360,7 @@ async def reset_password_internal(
     current_user: Usuario = Depends(get_current_active_user),
 ):
     role = (current_user.role or "USER").upper()
-    if role not in ("GESTOR", "RECEPCAO"):
+    if role != "GESTOR" and current_user.cargo != "Recepcionista":
         raise HTTPException(status_code=403, detail="Acesso restrito à recepção ou gestão")
 
     resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
@@ -397,19 +416,19 @@ async def login_user(request: Request, payload: UsuarioLogin, db: AsyncSession =
     await reset_login_attempts(db, usuario)
     
     role = (usuario.role or "USER").upper()
-    if role not in ("USER", "PROFISSIONAL", "GESTOR", "RECEPCAO", "ACS"):
+    if role not in ("USER", "PROFISSIONAL", "GESTOR"):
         role = "USER"
 
     resultado = await db.execute(select(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == usuario.id))
     tem_registro_prof = resultado.scalar_one_or_none() is not None
-    is_profissional = role in ("PROFISSIONAL", "GESTOR", "ACS") or tem_registro_prof
-    
+    is_profissional = role in ("PROFISSIONAL", "GESTOR") or tem_registro_prof
+
     token_acesso = create_access_token(
-        data={"sub": str(usuario.id), "email": usuario.email, "is_profissional": is_profissional, "role": role}
+        data={"sub": str(usuario.id), "email": usuario.email, "is_profissional": is_profissional, "role": role, "cargo": usuario.cargo}
     )
-    
+
     await log_login_attempt(db, payload.email, ip_cliente, True, "Login bem-sucedido")
-    
+
     return {
         "message": "Login realizado com sucesso",
         "access_token": token_acesso,
@@ -421,6 +440,7 @@ async def login_user(request: Request, payload: UsuarioLogin, db: AsyncSession =
             "cpf": usuario.cpf,
             "is_profissional": is_profissional,
             "role": role,
+            "cargo": usuario.cargo,
         }
     }
 
@@ -585,6 +605,7 @@ async def approve_professional_request(
         db.add(profissional)
 
     usuario.role = payload.role
+    usuario.cargo = solicitacao.cargo
     solicitacao.status = "APPROVED"
     solicitacao.reviewed_at = datetime.utcnow()
     solicitacao.reviewed_by_user_id = current_user.id
@@ -622,9 +643,9 @@ async def list_pending_welcome_users(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user),
 ):
-    if current_user.role not in ("RECEPCAO", "GESTOR"):
+    if current_user.role != "GESTOR" and current_user.cargo != "Recepcionista":
         raise HTTPException(status_code=403, detail="Acesso restrito à Recepção ou Gestão")
-    
+
     resultado = await db.execute(
         select(Usuario)
         .where(
@@ -642,9 +663,9 @@ async def confirm_welcome_email_sent(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user),
 ):
-    if current_user.role not in ("RECEPCAO", "GESTOR"):
+    if current_user.role != "GESTOR" and current_user.cargo != "Recepcionista":
         raise HTTPException(status_code=403, detail="Acesso restrito à Recepção ou Gestão")
-        
+
     resultado = await db.execute(select(Usuario).where(Usuario.id == user_id))
     usuario = resultado.scalar_one_or_none()
     

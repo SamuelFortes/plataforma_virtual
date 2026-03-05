@@ -84,6 +84,7 @@ from routes.materiais_routes import materiais_router
 from routes.cronograma_routes import cronograma_router
 from routes.suporte_feedback_routes import suporte_feedback_router
 from routes.gestao_equipes_routes import gestao_equipes_router
+from routes.cargos_routes import cargos_router
 
 # Incluindo as rotas (utilizando o prefixo /api para padronização)
 app.include_router(auth_router, prefix="/api")
@@ -93,6 +94,7 @@ app.include_router(materiais_router, prefix="/api")
 app.include_router(cronograma_router, prefix="/api")
 app.include_router(suporte_feedback_router, prefix="/api")
 app.include_router(gestao_equipes_router, prefix="/api")
+app.include_router(cargos_router, prefix="/api")
 
 # Monta o diretório de assets estáticos do frontend
 assets_path = "frontend-react/dist/assets"

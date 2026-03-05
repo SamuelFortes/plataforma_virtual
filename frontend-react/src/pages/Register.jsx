@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '../components/ui/Notifications';
 import { isValidCpf, isValidEmail, validateName, validatePassword } from '../utils/validators';
+import { cargosService } from '../services/cargosService';
 
 const Register = () => {
+  const [cargosDisponiveis, setCargosDisponiveis] = useState([]);
+
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
     cpf: '',
     password: '',
     confirmPassword: '',
-    role: 'USER'
+    role: 'USER',
+    cargo: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -20,6 +24,12 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const { notify } = useNotifications();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    cargosService.listar()
+      .then(data => setCargosDisponiveis(Array.isArray(data) ? data : []))
+      .catch(() => setCargosDisponiveis([]));
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -68,7 +78,8 @@ const Register = () => {
         email: formData.email,
         senha: formData.password,
         cpf: formData.cpf,
-        role: formData.role
+        role: formData.role,
+        cargo: formData.role === 'PROFISSIONAL' ? formData.cargo : null,
       });
       // Redirect to login with success message implies we might want to show a toast or pass state
       // For now, simple redirect
@@ -188,19 +199,49 @@ const Register = () => {
                   id="role"
                   name="role"
                   value={formData.role}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    setFormData(prev => ({
+                      ...prev,
+                      role: newRole,
+                      cargo: newRole === 'PROFISSIONAL' ? prev.cargo : '',
+                    }));
+                  }}
                   className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 >
-                  <option value="USER">Usuário Comum (USER)</option>
-                  <option value="GESTOR">Gestor (GESTOR)</option>
-                  <option value="RECEPCAO">Recepcionista (RECEPCAO)</option>
-                  <option value="ACS">Agente Comunitário de Saúde (ACS)</option>
+                  <option value="USER">Usuário Comum</option>
+                  <option value="PROFISSIONAL">Profissional de Saúde</option>
+                  <option value="GESTOR">Gestor</option>
                 </select>
               </div>
               <p className="mt-1 text-xs text-gray-500">
                 Selecione 'Gestor' apenas se tiver autorização administrativa.
               </p>
             </div>
+
+            {formData.role === 'PROFISSIONAL' && (
+              <div>
+                <label htmlFor="cargo" className="block text-sm font-medium text-gray-700">
+                  Cargo na UBS
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="cargo"
+                    name="cargo"
+                    value={formData.cargo}
+                    onChange={handleChange}
+                    required
+                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  >
+                    <option value="">Selecione o cargo</option>
+                    {cargosDisponiveis.map(c => (
+                      <option key={c.id} value={c.nome}>{c.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Selecione seu cargo dentro da UBS.</p>
+              </div>
+            )}
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">

@@ -18,8 +18,8 @@ from utils.deps import get_current_user
 
 agendamento_router = APIRouter(tags=["Agendamentos"])
 
-STAFF_ROLES = {"PROFISSIONAL", "GESTOR", "RECEPCAO"}
-AGENDA_VIEW_ROLES = {"PROFISSIONAL", "GESTOR", "RECEPCAO", "ACS"}
+STAFF_ROLES = {"PROFISSIONAL", "GESTOR"}
+AGENDA_VIEW_ROLES = {"PROFISSIONAL", "GESTOR"}
 
 
 def _validate_two_week_window(target: datetime, now_utc: datetime) -> None:

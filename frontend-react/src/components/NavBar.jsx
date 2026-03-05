@@ -14,7 +14,8 @@ import {
   LifebuoyIcon,
   EnvelopeIcon,
   KeyIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  BriefcaseIcon
 } from '@heroicons/react/24/outline';
 import { ubsService } from '../services/ubsService';
 
@@ -35,7 +36,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
   const isActive = (path) => location.pathname === path;
   const role = (user?.role || 'USER').toUpperCase();
   const roleLabel = role.toLowerCase();
-  const canSetupUbs = ['PROFISSIONAL', 'GESTOR', 'ACS'].includes(role);
+  const canSetupUbs = ['PROFISSIONAL', 'GESTOR'].includes(role);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +97,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 Dashboard
               </Link>
 
-              {(role === 'GESTOR' || role === 'RECEPCAO') && (
+              {(role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
                 <Link
                   to="/notificacoes"
                   className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -110,7 +111,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 </Link>
               )}
 
-              {role === 'RECEPCAO' && (
+              {(role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
                 <Link
                   to="/gerenciar-mensagens"
                   className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -148,7 +149,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
               </span>
               <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center capitalize">
                 <UserCircleIcon className="w-3 h-3 mr-1" />
-                Acesso: {roleLabel}
+                {user?.cargo ? `${user.cargo}` : `Acesso: ${roleLabel}`}
               </span>
             </div>
 
@@ -170,6 +171,16 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                     <Cog6ToothIcon className="w-4 h-4 mr-2" />
                     Configurações
                   </Link>
+                  {role === 'GESTOR' && (
+                    <Link
+                      to="/gerenciar-cargos"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <BriefcaseIcon className="w-4 h-4 mr-2" />
+                      Cargos
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-left"

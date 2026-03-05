@@ -92,3 +92,38 @@ CREATE TABLE IF NOT EXISTS suporte_feedback (
 	created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 5) Migração de roles: 5 roles → 3 roles + cargo
+-- Adiciona coluna cargo na tabela usuarios
+ALTER TABLE public.usuarios ADD COLUMN IF NOT EXISTS cargo VARCHAR(100) NULL;
+
+-- Migra RECEPCAO → PROFISSIONAL + cargo=Recepcionista
+UPDATE public.usuarios
+SET role = 'PROFISSIONAL', cargo = 'Recepcionista'
+WHERE UPPER(role) = 'RECEPCAO';
+
+-- Migra ACS → PROFISSIONAL + cargo=Agente Comunitário de Saúde
+UPDATE public.usuarios
+SET role = 'PROFISSIONAL', cargo = 'Agente Comunitário de Saúde'
+WHERE UPPER(role) = 'ACS';
+
+-- Preenche cargo de profissionais existentes a partir da tabela profissionais
+UPDATE public.usuarios u
+SET cargo = p.cargo
+FROM public.profissionais p
+WHERE u.id = p.usuario_id
+  AND UPPER(u.role) = 'PROFISSIONAL'
+  AND u.cargo IS NULL
+  AND p.ativo = TRUE;
+
+-- 6) Tabela de cargos dinâmicos
+CREATE TABLE IF NOT EXISTS cargos (
+	id SERIAL PRIMARY KEY,
+	nome VARCHAR(255) NOT NULL UNIQUE,
+	created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO cargos (nome) VALUES
+	('Médico'),('Enfermeiro'),('Dentista'),('Recepcionista'),
+	('Agente Comunitário de Saúde'),('Técnico de Enfermagem')
+ON CONFLICT DO NOTHING;
+

@@ -21,7 +21,7 @@ from utils.jwt_handler import verify_token
 
 materiais_router = APIRouter(prefix="/materiais", tags=["materiais"])
 
-EDIT_ROLES = {"GESTOR", "PROFISSIONAL", "ACS"}
+EDIT_ROLES = {"GESTOR", "PROFISSIONAL"}
 
 _UPLOADS_BASE_DIR = Path(__file__).resolve().parents[1] / "uploads" / "materials"
 _MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024

@@ -60,9 +60,8 @@ const Notificacoes = () => {
       "USER": "Paciente",
       "GESTOR": "Gestor",
       "PROFISSIONAL": "Profissional de Saúde",
-      "RECEPCAO": "Recepção"
     };
-    const roleDisplay = roleMap[user.role] || user.role;
+    const roleDisplay = user.cargo || roleMap[user.role] || user.role;
     
     const subject = "Bem-vindo(a) à Plataforma UBS!";
     const body = `Olá, ${user.nome}!

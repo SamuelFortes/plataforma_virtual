@@ -106,7 +106,7 @@ const GestaoEquipesMicroareas = () => {
   const currentUser = api.getCurrentUser();
   const canEdit = useMemo(() => {
     const role = (currentUser?.role || 'USER').toUpperCase();
-    return ['GESTOR', 'RECEPCAO'].includes(role);
+    return role === 'GESTOR' || currentUser?.cargo === 'Recepcionista';
   }, [currentUser]);
 
   const [kpis, setKpis] = useState(MOCK_KPIS);
@@ -543,6 +543,9 @@ const GestaoEquipesMicroareas = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                         Microárea
                       </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                        Famílias
+                      </th>
                       {canEdit && !usingMockData && (
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                           Ações
@@ -567,6 +570,9 @@ const GestaoEquipesMicroareas = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">
                           {agente.microarea_nome || agente.microarea}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-slate-300">
+                          {agente.familias ?? 0}
                         </td>
                         {canEdit && !usingMockData && (
                           <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -610,6 +616,9 @@ const GestaoEquipesMicroareas = () => {
                     </div>
                     <p className="text-xs text-gray-500 dark:text-slate-400">
                       {agente.microarea_nome || agente.microarea}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      {agente.familias ?? 0} famílias
                     </p>
                     {canEdit && !usingMockData && (
                       <div className="flex gap-2">

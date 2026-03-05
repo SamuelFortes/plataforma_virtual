@@ -58,9 +58,10 @@ async def listar_feedbacks(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lista todas as mensagens de feedback (apenas RECEPCAO)."""
-    if (current_user.role or "USER").upper() != "RECEPCAO":
-        raise HTTPException(status_code=403, detail="Acesso restrito à recepção.")
+    """Lista todas as mensagens de feedback (Gestão ou Recepcionista)."""
+    role = (current_user.role or "USER").upper()
+    if role != "GESTOR" and current_user.cargo != "Recepcionista":
+        raise HTTPException(status_code=403, detail="Acesso restrito à recepção ou gestão.")
 
     query = (
         select(SuporteFeedback)
@@ -91,9 +92,10 @@ async def atualizar_status_feedback(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Atualiza o status de uma mensagem (apenas RECEPCAO)."""
-    if (current_user.role or "USER").upper() != "RECEPCAO":
-        raise HTTPException(status_code=403, detail="Acesso restrito à recepção.")
+    """Atualiza o status de uma mensagem (Gestão ou Recepcionista)."""
+    role = (current_user.role or "USER").upper()
+    if role != "GESTOR" and current_user.cargo != "Recepcionista":
+        raise HTTPException(status_code=403, detail="Acesso restrito à recepção ou gestão.")
 
     feedback = await db.get(SuporteFeedback, feedback_id)
     if not feedback:

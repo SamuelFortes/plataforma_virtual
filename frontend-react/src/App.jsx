@@ -15,11 +15,12 @@ import SuporteFeedback from './pages/SuporteFeedback';
 import GerenciarMensagens from './pages/GerenciarMensagens';
 import GestaoEquipesMicroareas from './pages/GestaoEquipesMicroareas';
 import RedefinirSenha from './pages/RedefinirSenha';
+import GerenciarCargos from './pages/GerenciarCargos';
 import NavBar from './components/NavBar';
 import { NotificationsProvider } from './components/ui/Notifications';
 import { api } from './services/api';
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, allowedRoles, allowedCargos }) => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
 
@@ -27,8 +28,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles || allowedCargos) {
+    const roleOk = allowedRoles && allowedRoles.includes(user.role);
+    const cargoOk = allowedCargos && allowedCargos.includes(user.cargo);
+    if (!roleOk && !cargoOk) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return children;
@@ -38,7 +43,7 @@ const UbsGate = ({ children }) => {
   const [status, setStatus] = useState({ loading: true, hasUbs: true });
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
-  const canSetupUbs = ['PROFISSIONAL', 'GESTOR', 'ACS'].includes(user?.role);
+  const canSetupUbs = ['PROFISSIONAL', 'GESTOR'].includes(user?.role);
 
   useEffect(() => {
     let active = true;
@@ -112,15 +117,15 @@ function App() {
               } />
               
               <Route path="/agendamento" element={
-                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR', 'RECEPCAO', 'ACS']}>
+                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <Agendamento />
                   </UbsGate>
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/relatorios-situacionais" element={
-                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR', 'RECEPCAO', 'ACS']}>
+                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <RelatoriosSituacionais />
                   </UbsGate>
@@ -128,11 +133,11 @@ function App() {
               } />
 
               <Route path="/setup-ubs" element={
-                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR', 'ACS']}>
+                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR']}>
                   <SetupUbs />
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/solicitacoes" element={
                 <ProtectedRoute allowedRoles={['GESTOR']}>
                   <UbsGate>
@@ -141,8 +146,14 @@ function App() {
                 </ProtectedRoute>
               } />
 
+              <Route path="/gerenciar-cargos" element={
+                <ProtectedRoute allowedRoles={['GESTOR']}>
+                  <GerenciarCargos />
+                </ProtectedRoute>
+              } />
+
               <Route path="/notificacoes" element={
-                <ProtectedRoute allowedRoles={['GESTOR', 'RECEPCAO']}>
+                <ProtectedRoute allowedRoles={['GESTOR']} allowedCargos={['Recepcionista']}>
                   <UbsGate>
                     <Notificacoes />
                   </UbsGate>
@@ -150,7 +161,7 @@ function App() {
               } />
 
               <Route path="/mapa-problemas-intervencoes" element={
-                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR', 'ACS']}>
+                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <MapaProblemasIntervencoes />
                   </UbsGate>
@@ -158,7 +169,7 @@ function App() {
               } />
 
               <Route path="/materiais-educativos" element={
-                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR', 'ACS']}>
+                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <MateriaisEducativos />
                   </UbsGate>
@@ -166,7 +177,7 @@ function App() {
               } />
 
               <Route path="/cronograma" element={
-                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR', 'ACS']}>
+                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <Cronograma />
                   </UbsGate>
@@ -174,7 +185,7 @@ function App() {
               } />
 
               <Route path="/suporte-feedback" element={
-                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR', 'RECEPCAO', 'ACS']}>
+                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <SuporteFeedback />
                   </UbsGate>
@@ -182,7 +193,7 @@ function App() {
               } />
 
               <Route path="/gerenciar-mensagens" element={
-                <ProtectedRoute allowedRoles={['RECEPCAO']}>
+                <ProtectedRoute allowedRoles={['GESTOR']} allowedCargos={['Recepcionista']}>
                   <UbsGate>
                     <GerenciarMensagens />
                   </UbsGate>
@@ -190,7 +201,7 @@ function App() {
               } />
 
               <Route path="/gestao-equipes" element={
-                <ProtectedRoute allowedRoles={['GESTOR', 'RECEPCAO']}>
+                <ProtectedRoute allowedRoles={['GESTOR']} allowedCargos={['Recepcionista']}>
                   <UbsGate>
                     <GestaoEquipesMicroareas />
                   </UbsGate>
@@ -198,7 +209,7 @@ function App() {
               } />
 
               <Route path="/redefinir-senha" element={
-                <ProtectedRoute allowedRoles={['GESTOR', 'RECEPCAO']}>
+                <ProtectedRoute allowedRoles={['GESTOR']} allowedCargos={['Recepcionista']}>
                   <UbsGate>
                     <RedefinirSenha />
                   </UbsGate>

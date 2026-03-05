@@ -13,7 +13,7 @@ from utils.deps import get_current_active_user
 
 cronograma_router = APIRouter(prefix="/cronograma", tags=["cronograma"])
 
-EDIT_ROLES = {"GESTOR", "PROFISSIONAL", "ACS"}
+EDIT_ROLES = {"GESTOR", "PROFISSIONAL"}
 
 
 def _ensure_role(current_user: Usuario) -> None:

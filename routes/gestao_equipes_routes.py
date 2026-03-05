@@ -21,12 +21,9 @@ from models.diagnostico_models import UBS
 
 gestao_equipes_router = APIRouter(tags=["Gestão de Equipes e Microáreas"])
 
-ALLOWED_ROLES = {"GESTOR", "RECEPCAO"}
-
-
 def _ensure_allowed(current_user: Usuario):
     role = (current_user.role or "USER").upper()
-    if role not in ALLOWED_ROLES:
+    if role != "GESTOR" and current_user.cargo != "Recepcionista":
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores e recepção.")
 
 
@@ -227,8 +224,8 @@ async def criar_agente(
     usuario = await db.get(Usuario, payload.usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-    if (usuario.role or "USER").upper() != "ACS":
-        raise HTTPException(status_code=400, detail="Usuário deve ter role ACS.")
+    if usuario.cargo != "Agente Comunitário de Saúde":
+        raise HTTPException(status_code=400, detail="Usuário deve ter cargo de Agente Comunitário de Saúde.")
 
     novo = AgenteSaude(**payload.model_dump())
     db.add(novo)
@@ -265,8 +262,8 @@ async def atualizar_agente(
         usuario = await db.get(Usuario, dados["usuario_id"])
         if not usuario:
             raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-        if (usuario.role or "USER").upper() != "ACS":
-            raise HTTPException(status_code=400, detail="Usuário deve ter role ACS.")
+        if usuario.cargo != "Agente Comunitário de Saúde":
+            raise HTTPException(status_code=400, detail="Usuário deve ter cargo de Agente Comunitário de Saúde.")
     for campo, valor in dados.items():
         setattr(agente, campo, valor)
 
@@ -318,7 +315,7 @@ async def listar_acs_users(
 
     result = await db.execute(
         select(Usuario).where(
-            sqlfunc.upper(Usuario.role) == "ACS",
+            Usuario.cargo == "Agente Comunitário de Saúde",
             Usuario.ativo.is_(True),
         ).order_by(Usuario.nome)
     )
