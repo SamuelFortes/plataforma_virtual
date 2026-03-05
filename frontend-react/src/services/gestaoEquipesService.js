@@ -49,6 +49,13 @@ export const gestaoEquipesService = {
       requiresAuth: true,
     }),
 
+  associateAgentes: (microareaId, usuarioIds) =>
+    api.request(`/gestao-equipes/microareas/${microareaId}/agentes`, {
+      method: 'POST',
+      body: { usuario_ids: usuarioIds },
+      requiresAuth: true,
+    }),
+
   createAgente: (payload) =>
     api.request('/gestao-equipes/agentes', {
       method: 'POST',

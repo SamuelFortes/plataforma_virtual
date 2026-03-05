@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -63,6 +63,10 @@ class AgenteSaudeOut(BaseModel):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MicroareaAgentesUpdate(BaseModel):
+    usuario_ids: List[int]
 
 
 # ─── KPIs do Território ──────────────────────────────────────────────

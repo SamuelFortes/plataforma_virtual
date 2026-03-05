@@ -13,6 +13,7 @@ from schemas.gestao_equipes_schemas import (
     AgenteSaudeCreate,
     AgenteSaudeUpdate,
     AgenteSaudeOut,
+    MicroareaAgentesUpdate,
     KpisTerritorioOut,
     AcsUserOut,
 )
@@ -203,6 +204,82 @@ async def deletar_microarea(
     await db.delete(microarea)
     await db.commit()
     return None
+
+
+@gestao_equipes_router.post(
+    "/gestao-equipes/microareas/{microarea_id}/agentes",
+    response_model=List[AgenteSaudeOut],
+    status_code=status.HTTP_201_CREATED,
+)
+async def associar_agentes_microarea(
+    microarea_id: int,
+    payload: MicroareaAgentesUpdate,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Associa varios agentes a uma microarea em uma unica operacao."""
+    _ensure_allowed(current_user)
+
+    microarea = await db.get(Microarea, microarea_id)
+    if not microarea:
+        raise HTTPException(status_code=404, detail="Microarea nao encontrada.")
+
+    usuario_ids = list(dict.fromkeys(payload.usuario_ids))
+    if not usuario_ids:
+        raise HTTPException(status_code=400, detail="Informe ao menos um usuario.")
+
+    result = await db.execute(select(Usuario).where(Usuario.id.in_(usuario_ids)))
+    usuarios = {usuario.id: usuario for usuario in result.scalars().all()}
+    faltantes = [uid for uid in usuario_ids if uid not in usuarios]
+    if faltantes:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Usuarios nao encontrados: {', '.join(map(str, faltantes))}.",
+        )
+
+    invalidos = [
+        usuario for usuario in usuarios.values() if (usuario.role or "USER").upper() != "ACS"
+    ]
+    if invalidos:
+        raise HTTPException(status_code=400, detail="Usuarios devem ter role ACS.")
+
+    result = await db.execute(
+        select(AgenteSaude).where(
+            AgenteSaude.microarea_id == microarea_id,
+            AgenteSaude.usuario_id.in_(usuario_ids),
+        )
+    )
+    existentes = {agente.usuario_id: agente for agente in result.scalars().all()}
+
+    novos = []
+    for usuario_id in usuario_ids:
+        if usuario_id in existentes:
+            continue
+        agente = AgenteSaude(usuario_id=usuario_id, microarea_id=microarea_id, ativo=True)
+        db.add(agente)
+        novos.append(agente)
+
+    await db.commit()
+    for agente in novos:
+        await db.refresh(agente)
+
+    response = []
+    for usuario_id in usuario_ids:
+        agente = existentes.get(usuario_id)
+        if not agente:
+            agente = next((novo for novo in novos if novo.usuario_id == usuario_id), None)
+        if not agente:
+            continue
+
+        usuario = usuarios.get(usuario_id)
+        resp = AgenteSaudeOut.model_validate(agente)
+        resp.nome = usuario.nome if usuario else None
+        resp.microarea_nome = microarea.nome
+        resp.familias = microarea.familias
+        resp.pacientes = microarea.populacao
+        response.append(resp)
+
+    return response
 
 
 # ─── Agentes CRUD ─────────────────────────────────────────────────────

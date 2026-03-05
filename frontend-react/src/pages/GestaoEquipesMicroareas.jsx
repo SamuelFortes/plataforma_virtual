@@ -123,6 +123,9 @@ const GestaoEquipesMicroareas = () => {
   const [microareaForm, setMicroareaForm] = useState(EMPTY_MICROAREA_FORM);
   const [microareaEditingId, setMicroareaEditingId] = useState(null);
   const [savingMicroarea, setSavingMicroarea] = useState(false);
+  const [microareaAgentsModalOpen, setMicroareaAgentsModalOpen] = useState(false);
+  const [microareaAgentsTarget, setMicroareaAgentsTarget] = useState(null);
+  const [selectedUsuarioIds, setSelectedUsuarioIds] = useState([]);
 
   const [agenteModalOpen, setAgenteModalOpen] = useState(false);
   const [agenteModalMode, setAgenteModalMode] = useState('create');
@@ -189,10 +192,49 @@ const GestaoEquipesMicroareas = () => {
     });
     return map;
   }, [agentes]);
+  const microareaAgentIds = useMemo(() => {
+    const map = new Map();
+    agentes.forEach((agente) => {
+      if (!agente.microarea_id || !agente.usuario_id) return;
+      const list = map.get(agente.microarea_id) || [];
+      list.push(Number(agente.usuario_id));
+      map.set(agente.microarea_id, list);
+    });
+    return map;
+  }, [agentes]);
   const microareasCobertas = useMemo(
     () => microareas.filter((microarea) => microarea.status === 'COBERTA').length,
     [microareas]
   );
+
+  const renderAgentBadges = (microareaId) => {
+    const nomes = microareaAgents.get(microareaId) || [];
+    if (nomes.length === 0) {
+      return <span className="text-xs text-slate-400">Nenhum agente vinculado</span>;
+    }
+
+    const maxVisible = 3;
+    const visible = nomes.slice(0, maxVisible);
+    const remaining = nomes.length - visible.length;
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {visible.map((nome) => (
+          <span
+            key={nome}
+            className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700"
+          >
+            {nome}
+          </span>
+        ))}
+        {remaining > 0 && (
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+            +{remaining}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   const openNewMicroarea = () => {
     setMicroareaForm(EMPTY_MICROAREA_FORM);
@@ -212,6 +254,13 @@ const GestaoEquipesMicroareas = () => {
     setMicroareaModalMode('edit');
     setMicroareaEditingId(microarea.id);
     setMicroareaModalOpen(true);
+  };
+
+  const openAssociateAgents = (microarea) => {
+    const currentIds = microareaAgentIds.get(microarea.id) || [];
+    setMicroareaAgentsTarget(microarea);
+    setSelectedUsuarioIds([...new Set(currentIds)]);
+    setMicroareaAgentsModalOpen(true);
   };
 
   const openNewAgente = () => {
@@ -442,6 +491,38 @@ const GestaoEquipesMicroareas = () => {
     }
   };
 
+  const handleToggleUsuarioId = (usuarioId) => {
+    setSelectedUsuarioIds((prev) =>
+      prev.includes(usuarioId) ? prev.filter((id) => id !== usuarioId) : [...prev, usuarioId]
+    );
+  };
+
+  const handleAssociateAgents = async () => {
+    if (!canEdit || usingMockData) {
+      notify({ type: 'warning', message: 'Edição indisponível para este usuário ou em modo de demonstração.' });
+      return;
+    }
+
+    if (!microareaAgentsTarget?.id) {
+      notify({ type: 'error', message: 'Selecione uma microárea válida.' });
+      return;
+    }
+
+    if (selectedUsuarioIds.length === 0) {
+      notify({ type: 'warning', message: 'Selecione ao menos um ACS.' });
+      return;
+    }
+
+    try {
+      await gestaoEquipesService.associateAgentes(microareaAgentsTarget.id, selectedUsuarioIds);
+      notify({ type: 'success', message: 'Agentes vinculados com sucesso.' });
+      setMicroareaAgentsModalOpen(false);
+      await loadData();
+    } catch (error) {
+      notify({ type: 'error', message: error.message || 'Erro ao vincular agentes.' });
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8 rise-fade">
@@ -648,7 +729,7 @@ const GestaoEquipesMicroareas = () => {
                       onClick={openNewMicroarea}
                       className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-emerald-700"
                     >
-                      Gerenciar microáreas
+                      Nova microárea
                     </button>
                   )}
                 </div>
@@ -690,7 +771,7 @@ const GestaoEquipesMicroareas = () => {
                           {microarea.status}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">
-                          {(microareaAgents.get(microarea.id) || []).join(', ') || 'Não definido'}
+                          {renderAgentBadges(microarea.id)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-slate-300">
                           {microarea.familias}
@@ -701,6 +782,12 @@ const GestaoEquipesMicroareas = () => {
                         {canEdit && !usingMockData && (
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => openAssociateAgents(microarea)}
+                                className="rounded-full border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                              >
+                                Vincular agentes
+                              </button>
                               <button
                                 onClick={() => openEditMicroarea(microarea)}
                                 className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
@@ -735,7 +822,7 @@ const GestaoEquipesMicroareas = () => {
                       <span className="text-xs text-gray-500 dark:text-slate-400">{microarea.status}</span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-slate-400">
-                      {(microareaAgents.get(microarea.id) || []).join(', ') || 'Não definido'}
+                      {(microareaAgents.get(microarea.id) || []).join(', ') || 'Nenhum agente vinculado'}
                     </p>
                     <div className="flex gap-3 text-xs text-gray-500 dark:text-slate-400">
                       <span>{microarea.familias} famílias</span>
@@ -743,6 +830,12 @@ const GestaoEquipesMicroareas = () => {
                     </div>
                     {canEdit && !usingMockData && (
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => openAssociateAgents(microarea)}
+                          className="rounded-full border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                        >
+                          Vincular agentes
+                        </button>
                         <button
                           onClick={() => openEditMicroarea(microarea)}
                           className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
@@ -803,6 +896,53 @@ const GestaoEquipesMicroareas = () => {
           </section>
         </>
       )}
+
+      <Modal
+        open={microareaAgentsModalOpen}
+        title={microareaAgentsTarget ? `Vincular agentes - ${microareaAgentsTarget.nome}` : 'Vincular agentes'}
+        onClose={() => setMicroareaAgentsModalOpen(false)}
+        footer={(
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setMicroareaAgentsModalOpen(false)}
+              className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleAssociateAgents}
+              className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
+            >
+              Vincular
+            </button>
+          </div>
+        )}
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">
+            Selecione um ou mais ACS para vincular a microárea.
+          </p>
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 p-3 space-y-2">
+            {acsUsers.length === 0 && (
+              <p className="text-sm text-slate-500">Nenhum ACS disponível.</p>
+            )}
+            {acsUsers.map((user) => (
+              <label key={user.id} className="flex items-center gap-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={selectedUsuarioIds.includes(user.id)}
+                  onChange={() => handleToggleUsuarioId(user.id)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  {user.nome}
+                  <span className="text-xs text-slate-400"> ({user.email})</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={microareaModalOpen}
