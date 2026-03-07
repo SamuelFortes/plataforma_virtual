@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -8,28 +8,34 @@ from datetime import datetime
 class MicroareaCreate(BaseModel):
     ubs_id: int
     nome: str
+    localidades: List[str]
+    descricao: str = Field(min_length=1)
+    observacoes: Optional[str] = None
     status: str = "COBERTA"
     populacao: int = 0
     familias: int = 0
-    geojson: Optional[dict] = None
 
 
 class MicroareaUpdate(BaseModel):
     nome: Optional[str] = None
+    localidades: Optional[List[str]] = None
+    descricao: Optional[str] = None
+    observacoes: Optional[str] = None
     status: Optional[str] = None
     populacao: Optional[int] = None
     familias: Optional[int] = None
-    geojson: Optional[dict] = None
 
 
 class MicroareaOut(BaseModel):
     id: int
     ubs_id: int
     nome: str
+    localidades: List[str]
+    descricao: str
+    observacoes: Optional[str] = None
     status: str
     populacao: int
     familias: int
-    geojson: Optional[dict] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

@@ -206,6 +206,12 @@ async def criar_microarea(
     if payload.status not in ("COBERTA", "DESCOBERTA"):
         raise HTTPException(status_code=400, detail="Status deve ser COBERTA ou DESCOBERTA.")
 
+    if not payload.descricao.strip():
+        raise HTTPException(status_code=400, detail="Descricao e obrigatoria.")
+
+    if not payload.localidades:
+        raise HTTPException(status_code=400, detail="Informe ao menos uma localidade.")
+
     ubs = await db.get(UBS, payload.ubs_id)
     if not ubs:
         raise HTTPException(status_code=404, detail="UBS não encontrada.")
@@ -237,6 +243,12 @@ async def atualizar_microarea(
     dados = payload.model_dump(exclude_unset=True)
     if "status" in dados and dados["status"] not in ("COBERTA", "DESCOBERTA"):
         raise HTTPException(status_code=400, detail="Status deve ser COBERTA ou DESCOBERTA.")
+
+    if "descricao" in dados and not (dados["descricao"] or "").strip():
+        raise HTTPException(status_code=400, detail="Descricao e obrigatoria.")
+
+    if "localidades" in dados and not dados["localidades"]:
+        raise HTTPException(status_code=400, detail="Informe ao menos uma localidade.")
 
     for campo, valor in dados.items():
         setattr(microarea, campo, valor)

@@ -345,10 +345,12 @@ create table public.microareas (
   id serial not null,
   ubs_id integer not null,
   nome character varying(100) not null,
+  localidades jsonb not null default '[]',
+  descricao text not null,
+  observacoes text null,
   status character varying(20) not null default 'COBERTA',
   populacao integer not null default 0,
   familias integer not null default 0,
-  geojson jsonb null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null,
   constraint microareas_pkey primary key (id),
@@ -654,10 +656,12 @@ CREATE TABLE public.microareas (
     id serial NOT NULL,
     ubs_id integer NOT NULL,
     nome character varying(100) NOT NULL,
+  localidades jsonb NOT NULL DEFAULT '[]',
+  descricao text NOT NULL,
+  observacoes text NULL,
     status character varying(20) NOT NULL DEFAULT 'COBERTA',
     populacao integer NOT NULL DEFAULT 0,
     familias integer NOT NULL DEFAULT 0,
-    geojson jsonb NULL,
     created_at timestamp with time zone NULL DEFAULT now(),
     updated_at timestamp with time zone NULL,
 
@@ -687,14 +691,14 @@ Popula as tabelas com dados fictícios de 7 microáreas (5 cobertas + 2 descober
 -- =============================================
 -- MICROÁREAS (7 total: 5 cobertas, 2 descobertas)
 -- =============================================
-INSERT INTO public.microareas (ubs_id, nome, status, populacao, familias) VALUES
-(3, 'Microárea 01 - Baixa do Aragão', 'COBERTA', 2100, 210),
-(3, 'Microárea 02 - Centro', 'COBERTA', 1850, 185),
-(3, 'Microárea 03 - Piauí', 'COBERTA', 2300, 230),
-(3, 'Microárea 04 - Frei Higino', 'COBERTA', 1950, 195),
-(3, 'Microárea 05 - Pindorama', 'COBERTA', 2200, 220),
-(3, 'Microárea 06 - São José', 'DESCOBERTA', 1100, 110),
-(3, 'Microárea 07 - Rodoviária', 'DESCOBERTA', 950, 95);
+INSERT INTO public.microareas (ubs_id, nome, localidades, descricao, observacoes, status, populacao, familias) VALUES
+(3, 'Microarea 01 - Baixa do Aragao', '["Baixa do Aragao", "Rua A", "Rua B"]', 'Do posto X ate a avenida Y.', NULL, 'COBERTA', 2100, 210),
+(3, 'Microarea 02 - Centro', '["Centro", "Av. Principal", "Rua do Comercio"]', 'Delimitada entre a praca central e o mercado.', NULL, 'COBERTA', 1850, 185),
+(3, 'Microarea 03 - Piaui', '["Bairro Piaui", "Av. Norte"]', 'Regiao proxima a escola municipal.', NULL, 'COBERTA', 2300, 230),
+(3, 'Microarea 04 - Frei Higino', '["Frei Higino", "Rua das Flores"]', 'Entre a UBS e o ginásio.', NULL, 'COBERTA', 1950, 195),
+(3, 'Microarea 05 - Pindorama', '["Pindorama", "Rua da Serra"]', 'Area residencial ao redor da igreja.', NULL, 'COBERTA', 2200, 220),
+(3, 'Microarea 06 - Sao Jose', '["Sao Jose", "Av. Leste"]', 'Limites proximos ao campo de futebol.', NULL, 'DESCOBERTA', 1100, 110),
+(3, 'Microarea 07 - Rodoviaria', '["Rodoviaria", "Rua da Estacao"]', 'Regiao da rodoviaria e adjacencias.', NULL, 'DESCOBERTA', 950, 95);
 
 -- =============================================
 -- USUÁRIOS ACS (Agentes Comunitários de Saúde)

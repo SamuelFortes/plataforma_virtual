@@ -94,9 +94,16 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
     for microarea in microareas:
         agentes = agentes_por_microarea.get(microarea.id, [])
         agentes_texto = ", ".join(agentes) if agentes else "-"
+        localidades = getattr(microarea, "localidades", None) or []
+        locais_texto = ", ".join([str(item) for item in localidades]) if localidades else "-"
+        descricao = (getattr(microarea, "descricao", "") or "").strip() or "-"
+        observacoes = (getattr(microarea, "observacoes", "") or "").strip()
+        detalhes = f"<b>{microarea.nome}</b><br/>Localidades: {locais_texto}<br/>Descricao: {descricao}"
+        if observacoes:
+            detalhes += f"<br/>Observacoes: {observacoes}"
         table_data.append(
             [
-                microarea.nome,
+                Paragraph(detalhes, styles["BodyText"]),
                 microarea.status,
                 str(microarea.familias or 0),
                 str(microarea.populacao or 0),
@@ -106,7 +113,7 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
 
     table = Table(
         table_data,
-        colWidths=[6 * cm, 2.2 * cm, 2.2 * cm, 2.5 * cm, 5 * cm],
+        colWidths=[8 * cm, 2.2 * cm, 2.1 * cm, 2.4 * cm, 4.3 * cm],
         repeatRows=1,
     )
     table.setStyle(
