@@ -95,7 +95,15 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
         agentes = agentes_por_microarea.get(microarea.id, [])
         agentes_texto = ", ".join(agentes) if agentes else "-"
         localidades = getattr(microarea, "localidades", None) or []
-        locais_texto = ", ".join([str(item) for item in localidades]) if localidades else "-"
+        locais_formatados = []
+        for item in localidades:
+            if isinstance(item, dict):
+                nome = (item.get("nome") or "").strip()
+                if nome:
+                    locais_formatados.append(nome)
+            elif item:
+                locais_formatados.append(str(item))
+        locais_texto = ", ".join(locais_formatados) if locais_formatados else "-"
         descricao = (getattr(microarea, "descricao", "") or "").strip() or "-"
         observacoes = (getattr(microarea, "observacoes", "") or "").strip()
         detalhes = f"<b>{microarea.nome}</b><br/>Localidades: {locais_texto}<br/>Descricao: {descricao}"

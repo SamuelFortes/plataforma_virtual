@@ -1,14 +1,18 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 
 
 # ─── Microarea ────────────────────────────────────────────────────────
 
+class LocalidadeItem(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+
 class MicroareaCreate(BaseModel):
     ubs_id: int
     nome: str
-    localidades: List[str]
+    localidades: List[Union[LocalidadeItem, str]]
     descricao: str = Field(min_length=1)
     observacoes: Optional[str] = None
     status: str = "COBERTA"
@@ -18,7 +22,7 @@ class MicroareaCreate(BaseModel):
 
 class MicroareaUpdate(BaseModel):
     nome: Optional[str] = None
-    localidades: Optional[List[str]] = None
+    localidades: Optional[List[Union[LocalidadeItem, str]]] = None
     descricao: Optional[str] = None
     observacoes: Optional[str] = None
     status: Optional[str] = None
@@ -30,7 +34,7 @@ class MicroareaOut(BaseModel):
     id: int
     ubs_id: int
     nome: str
-    localidades: List[str]
+    localidades: List[LocalidadeItem]
     descricao: str
     observacoes: Optional[str] = None
     status: str

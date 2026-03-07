@@ -42,6 +42,23 @@ const EMPTY_MICROAREA_FORM = {
 
 const isValidId = (value) => Number.isInteger(Number(value)) && Number(value) > 0;
 const normalizeLocalidade = (value) => value.trim().replace(/\s+/g, ' ');
+const normalizeLocalidadesFromApi = (localidades = []) => {
+  if (!Array.isArray(localidades)) return [];
+  return localidades
+    .map((item) => {
+      if (typeof item === 'string') {
+        const nome = normalizeLocalidade(item);
+        return nome ? { nome, descricao: '' } : null;
+      }
+      if (item && typeof item === 'object') {
+        const nome = normalizeLocalidade(item.nome || item.name || '');
+        const descricao = (item.descricao || '').trim();
+        return nome ? { nome, descricao } : null;
+      }
+      return null;
+    })
+    .filter(Boolean);
+};
 
 const Modal = ({ open, title, children, onClose, footer }) => {
   if (!open) return null;
@@ -108,6 +125,9 @@ const GestaoEquipesMicroareas = () => {
   const [localidadeInput, setLocalidadeInput] = useState('');
   const [microareaEditingId, setMicroareaEditingId] = useState(null);
   const [savingMicroarea, setSavingMicroarea] = useState(false);
+  const [localidadeModalOpen, setLocalidadeModalOpen] = useState(false);
+  const [localidadeEditingIndex, setLocalidadeEditingIndex] = useState(null);
+  const [localidadeDraftDescricao, setLocalidadeDraftDescricao] = useState('');
   const [microareaAgentsModalOpen, setMicroareaAgentsModalOpen] = useState(false);
   const [microareaAgentsTarget, setMicroareaAgentsTarget] = useState(null);
   const [selectedUsuarioIds, setSelectedUsuarioIds] = useState([]);
@@ -140,7 +160,13 @@ const GestaoEquipesMicroareas = () => {
       ]);
       setKpis(kpisData || MOCK_KPIS);
       setAgentes(Array.isArray(agentesData) && agentesData.length > 0 ? agentesData : []);
-      setMicroareas(Array.isArray(microareasData) ? microareasData : []);
+      const normalized = Array.isArray(microareasData)
+        ? microareasData.map((microarea) => ({
+            ...microarea,
+            localidades: normalizeLocalidadesFromApi(microarea.localidades),
+          }))
+        : [];
+      setMicroareas(normalized);
     } catch {
       setKpis(MOCK_KPIS);
       setAgentes(MOCK_AGENTES);
@@ -182,13 +208,34 @@ const GestaoEquipesMicroareas = () => {
 
     return (
       <div className="flex flex-wrap gap-2">
-        {localidades.map((local) => (
+        {localidades.map((local, index) => (
           <span
-            key={local}
+            key={`${local.nome}-${index}`}
             className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
           >
-            {local}
+            {local.nome}
           </span>
+        ))}
+      </div>
+    );
+  };
+
+  const renderLocalidadesDetalhadas = (localidades) => {
+    if (!Array.isArray(localidades) || localidades.length === 0) {
+      return <p className="mt-2 text-sm text-slate-500">Sem localidades informadas.</p>;
+    }
+
+    return (
+      <div className="mt-2 space-y-2">
+        {localidades.map((local, index) => (
+          <div key={`${local.nome}-${index}`} className="rounded-lg border border-slate-200 p-3">
+            <p className="text-sm font-semibold text-slate-700">{local.nome}</p>
+            {local.descricao ? (
+              <p className="mt-1 text-xs text-slate-500">{local.descricao}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-400">Sem descricao.</p>
+            )}
+          </div>
         ))}
       </div>
     );
@@ -205,7 +252,7 @@ const GestaoEquipesMicroareas = () => {
   const openEditMicroarea = (microarea) => {
     setMicroareaForm({
       nome: microarea.nome ?? '',
-      localidades: Array.isArray(microarea.localidades) ? microarea.localidades : [],
+      localidades: normalizeLocalidadesFromApi(microarea.localidades),
       descricao: microarea.descricao ?? '',
       observacoes: microarea.observacoes ?? '',
       status: microarea.status ?? 'COBERTA',
@@ -224,10 +271,10 @@ const GestaoEquipesMicroareas = () => {
 
     setMicroareaForm((prev) => {
       const exists = prev.localidades.some(
-        (item) => normalizeLocalidade(item).toLowerCase() === cleaned.toLowerCase()
+        (item) => normalizeLocalidade(item.nome || '').toLowerCase() === cleaned.toLowerCase()
       );
       if (exists) return prev;
-      return { ...prev, localidades: [...prev.localidades, cleaned] };
+      return { ...prev, localidades: [...prev.localidades, { nome: cleaned, descricao: '' }] };
     });
     setLocalidadeInput('');
   };
@@ -235,8 +282,33 @@ const GestaoEquipesMicroareas = () => {
   const handleRemoveLocalidade = (value) => {
     setMicroareaForm((prev) => ({
       ...prev,
-      localidades: prev.localidades.filter((item) => item !== value),
+      localidades: prev.localidades.filter((item) => item.nome !== value),
     }));
+  };
+
+  const openLocalidadeDescricao = (index) => {
+    const localidade = microareaForm.localidades[index];
+    if (!localidade) return;
+    setLocalidadeEditingIndex(index);
+    setLocalidadeDraftDescricao(localidade.descricao || '');
+    setLocalidadeModalOpen(true);
+  };
+
+  const handleSaveLocalidadeDescricao = () => {
+    if (localidadeEditingIndex === null) return;
+    setMicroareaForm((prev) => {
+      const updated = [...prev.localidades];
+      const current = updated[localidadeEditingIndex];
+      if (!current) return prev;
+      updated[localidadeEditingIndex] = {
+        ...current,
+        descricao: localidadeDraftDescricao.trim(),
+      };
+      return { ...prev, localidades: updated };
+    });
+    setLocalidadeModalOpen(false);
+    setLocalidadeEditingIndex(null);
+    setLocalidadeDraftDescricao('');
   };
 
   const openAssociateAgents = (microarea) => {
@@ -262,7 +334,10 @@ const GestaoEquipesMicroareas = () => {
   const buildMicroareaPayload = () => {
     const payload = {
       nome: microareaForm.nome.trim(),
-      localidades: microareaForm.localidades,
+      localidades: microareaForm.localidades.map((local) => ({
+        nome: (local.nome || '').trim(),
+        descricao: (local.descricao || '').trim() || null,
+      })),
       descricao: microareaForm.descricao.trim(),
       observacoes: microareaForm.observacoes?.trim() || null,
       status: microareaForm.status,
@@ -839,7 +914,7 @@ const GestaoEquipesMicroareas = () => {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500">Localidades</p>
-              <div className="mt-2">{renderLocalidades(microareaDetailsTarget.localidades)}</div>
+              {renderLocalidadesDetalhadas(microareaDetailsTarget.localidades)}
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500">Descrição</p>
@@ -942,16 +1017,25 @@ const GestaoEquipesMicroareas = () => {
                   {microareaForm.localidades.length === 0 && (
                     <span className="text-xs text-slate-400">Nenhuma localidade adicionada.</span>
                   )}
-                  {microareaForm.localidades.map((local) => (
+                  {microareaForm.localidades.map((local, index) => (
                     <span
-                      key={local}
-                      className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                      key={`${local.nome}-${index}`}
+                      onClick={() => openLocalidadeDescricao(index)}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 transition-all hover:-translate-y-0.5 hover:bg-blue-100 hover:text-blue-800 hover:shadow-sm"
                     >
-                      {local}
+                      {local.nome}
+                      {local.descricao && (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                          i
+                        </span>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleRemoveLocalidade(local)}
-                        className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-200"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleRemoveLocalidade(local.nome);
+                        }}
+                        className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 hover:bg-blue-200"
                       >
                         x
                       </button>
@@ -959,7 +1043,7 @@ const GestaoEquipesMicroareas = () => {
                   ))}
                 </div>
                 <p className="text-xs text-slate-500">
-                  Use termos simples para facilitar a visualização: bairro, rua, avenida.
+                  Clique em uma localidade para descrever a delimitacao.
                 </p>
               </div>
             </Field>
@@ -1005,6 +1089,49 @@ const GestaoEquipesMicroareas = () => {
             </Field>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={localidadeModalOpen}
+        title="Detalhes da localidade"
+        onClose={() => setLocalidadeModalOpen(false)}
+        footer={(
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setLocalidadeModalOpen(false)}
+              className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveLocalidadeDescricao}
+              className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-emerald-700"
+            >
+              Salvar descricao
+            </button>
+          </div>
+        )}
+      >
+        {localidadeEditingIndex !== null && microareaForm.localidades[localidadeEditingIndex] && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Localidade</p>
+              <p className="mt-2 text-sm font-semibold text-slate-700">
+                {microareaForm.localidades[localidadeEditingIndex].nome}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500">Descricao da delimitacao</p>
+              <textarea
+                value={localidadeDraftDescricao}
+                onChange={(event) => setLocalidadeDraftDescricao(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                rows={3}
+                placeholder="Ex.: vai do posto X ate a avenida Y."
+              />
+            </div>
+          </div>
+        )}
       </Modal>
 
     </div>

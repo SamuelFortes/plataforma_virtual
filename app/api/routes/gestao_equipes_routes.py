@@ -26,6 +26,29 @@ gestao_equipes_router = APIRouter(tags=["Gestão de Equipes e Microáreas"])
 ALLOWED_ROLES = {"GESTOR", "RECEPCAO"}
 
 
+def _normalize_localidades(localidades):
+    if localidades is None:
+        return None
+
+    normalized = []
+    for item in localidades:
+        if isinstance(item, str):
+            nome = item.strip()
+            descricao = None
+        elif isinstance(item, dict):
+            nome = (item.get("nome") or "").strip()
+            descricao = (item.get("descricao") or "").strip() or None
+        else:
+            raise HTTPException(status_code=400, detail="Localidades invalidas.")
+
+        if not nome:
+            raise HTTPException(status_code=400, detail="Localidade deve ter nome.")
+
+        normalized.append({"nome": nome, "descricao": descricao})
+
+    return normalized
+
+
 def _ensure_allowed(current_user: Usuario):
     role = (current_user.role or "USER").upper()
     if role not in ALLOWED_ROLES:
@@ -133,7 +156,10 @@ async def listar_microareas(
     if ubs_id:
         stmt = stmt.where(Microarea.ubs_id == ubs_id)
     result = await db.execute(stmt.order_by(Microarea.id))
-    return result.scalars().all()
+    microareas = result.scalars().all()
+    for microarea in microareas:
+        microarea.localidades = _normalize_localidades(microarea.localidades) or []
+    return microareas
 
 
 @gestao_equipes_router.get("/gestao-equipes/microareas/export/pdf")
@@ -212,11 +238,17 @@ async def criar_microarea(
     if not payload.localidades:
         raise HTTPException(status_code=400, detail="Informe ao menos uma localidade.")
 
+    localidades = _normalize_localidades(payload.localidades)
+    if not localidades:
+        raise HTTPException(status_code=400, detail="Informe ao menos uma localidade.")
+
     ubs = await db.get(UBS, payload.ubs_id)
     if not ubs:
         raise HTTPException(status_code=404, detail="UBS não encontrada.")
 
-    nova = Microarea(**payload.model_dump())
+    dados = payload.model_dump()
+    dados["localidades"] = localidades
+    nova = Microarea(**dados)
     db.add(nova)
     await db.commit()
     await db.refresh(nova)
@@ -247,8 +279,10 @@ async def atualizar_microarea(
     if "descricao" in dados and not (dados["descricao"] or "").strip():
         raise HTTPException(status_code=400, detail="Descricao e obrigatoria.")
 
-    if "localidades" in dados and not dados["localidades"]:
-        raise HTTPException(status_code=400, detail="Informe ao menos uma localidade.")
+    if "localidades" in dados:
+        if not dados["localidades"]:
+            raise HTTPException(status_code=400, detail="Informe ao menos uma localidade.")
+        dados["localidades"] = _normalize_localidades(dados["localidades"])
 
     for campo, valor in dados.items():
         setattr(microarea, campo, valor)
