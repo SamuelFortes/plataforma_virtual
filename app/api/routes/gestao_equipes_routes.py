@@ -38,6 +38,9 @@ def _normalize_localidades(localidades):
         elif isinstance(item, dict):
             nome = (item.get("nome") or "").strip()
             descricao = (item.get("descricao") or "").strip() or None
+        elif hasattr(item, "nome"):
+            nome = (getattr(item, "nome", "") or "").strip()
+            descricao = (getattr(item, "descricao", "") or "").strip() or None
         else:
             raise HTTPException(status_code=400, detail="Localidades invalidas.")
 

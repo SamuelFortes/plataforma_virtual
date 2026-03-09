@@ -133,6 +133,8 @@ const GestaoEquipesMicroareas = () => {
   const [selectedUsuarioIds, setSelectedUsuarioIds] = useState([]);
   const [microareaDetailsOpen, setMicroareaDetailsOpen] = useState(false);
   const [microareaDetailsTarget, setMicroareaDetailsTarget] = useState(null);
+  const [microareaStatusFilter, setMicroareaStatusFilter] = useState('ALL');
+  const [microareaSearch, setMicroareaSearch] = useState('');
 
   const loadCatalogs = useCallback(async () => {
     try {
@@ -196,10 +198,43 @@ const GestaoEquipesMicroareas = () => {
     });
     return map;
   }, [agentes]);
+  const microareaAgentCounts = useMemo(() => {
+    const counts = new Map();
+    agentes.forEach((agente) => {
+      if (!agente.microarea_id) return;
+      const current = counts.get(agente.microarea_id) || 0;
+      counts.set(agente.microarea_id, current + 1);
+    });
+    return counts;
+  }, [agentes]);
   const microareasCobertas = useMemo(
     () => microareas.filter((microarea) => microarea.status === 'COBERTA').length,
     [microareas]
   );
+  const filteredMicroareas = useMemo(() => {
+    const query = microareaSearch.trim().toLowerCase();
+    return microareas.filter((microarea) => {
+      if (microareaStatusFilter !== 'ALL' && microarea.status !== microareaStatusFilter) {
+        return false;
+      }
+      if (!query) return true;
+      const nome = (microarea.nome || '').toLowerCase();
+      const localidades = Array.isArray(microarea.localidades)
+        ? microarea.localidades.map((local) => (local?.nome || '').toLowerCase()).join(' ')
+        : '';
+      return nome.includes(query) || localidades.includes(query);
+    });
+  }, [microareas, microareaSearch, microareaStatusFilter]);
+
+  const getMicroareaAlert = (microarea, agentCount) => {
+    if (microarea.status === 'COBERTA' && agentCount === 0) {
+      return 'Coberta sem ACS';
+    }
+    if (microarea.status === 'DESCOBERTA' && agentCount > 0) {
+      return 'Descoberta com ACS';
+    }
+    return '';
+  };
 
   const renderLocalidades = (localidades) => {
     if (!Array.isArray(localidades) || localidades.length === 0) {
@@ -266,15 +301,21 @@ const GestaoEquipesMicroareas = () => {
   };
 
   const handleAddLocalidade = () => {
-    const cleaned = normalizeLocalidade(localidadeInput);
-    if (!cleaned) return;
+    const parts = localidadeInput
+      .split(',')
+      .map((item) => normalizeLocalidade(item))
+      .filter(Boolean);
+    if (parts.length === 0) return;
 
     setMicroareaForm((prev) => {
-      const exists = prev.localidades.some(
-        (item) => normalizeLocalidade(item.nome || '').toLowerCase() === cleaned.toLowerCase()
+      const existing = new Set(
+        prev.localidades.map((item) => normalizeLocalidade(item.nome || '').toLowerCase())
       );
-      if (exists) return prev;
-      return { ...prev, localidades: [...prev.localidades, { nome: cleaned, descricao: '' }] };
+      const additions = parts
+        .filter((name) => !existing.has(name.toLowerCase()))
+        .map((name) => ({ nome: name, descricao: '' }));
+      if (additions.length === 0) return prev;
+      return { ...prev, localidades: [...prev.localidades, ...additions] };
     });
     setLocalidadeInput('');
   };
@@ -332,12 +373,15 @@ const GestaoEquipesMicroareas = () => {
 
 
   const buildMicroareaPayload = () => {
-    const payload = {
-      nome: microareaForm.nome.trim(),
-      localidades: microareaForm.localidades.map((local) => ({
+    const validLocalidades = microareaForm.localidades
+      .map((local) => ({
         nome: (local.nome || '').trim(),
         descricao: (local.descricao || '').trim() || null,
-      })),
+      }))
+      .filter((local) => local.nome);
+    const payload = {
+      nome: microareaForm.nome.trim(),
+      localidades: validLocalidades,
       descricao: microareaForm.descricao.trim(),
       observacoes: microareaForm.observacoes?.trim() || null,
       status: microareaForm.status,
@@ -365,6 +409,14 @@ const GestaoEquipesMicroareas = () => {
 
     if (!microareaForm.nome.trim()) {
       notify({ type: 'error', message: 'O nome da microárea é obrigatório.' });
+      return;
+    }
+
+    if (localidadeInput.trim()) {
+      notify({
+        type: 'warning',
+        message: 'Você digitou uma localidade. Clique em Adicionar antes de salvar.',
+      });
       return;
     }
 
@@ -654,7 +706,7 @@ const GestaoEquipesMicroareas = () => {
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Microáreas</h2>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                      {microareas.length} microáreas cadastradas
+                      {filteredMicroareas.length} microáreas cadastradas
                     </p>
                   </div>
                   {canEdit && !usingMockData && (
@@ -665,6 +717,29 @@ const GestaoEquipesMicroareas = () => {
                       Nova microárea
                     </button>
                   )}
+                </div>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-500">Status</label>
+                    <select
+                      value={microareaStatusFilter}
+                      onChange={(event) => setMicroareaStatusFilter(event.target.value)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
+                    >
+                      <option value="ALL">Todas</option>
+                      <option value="COBERTA">COBERTA</option>
+                      <option value="DESCOBERTA">DESCOBERTA</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={microareaSearch}
+                      onChange={(event) => setMicroareaSearch(event.target.value)}
+                      className="w-full rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold text-slate-600"
+                      placeholder="Buscar por nome ou localidade"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -679,10 +754,16 @@ const GestaoEquipesMicroareas = () => {
                         Status
                       </th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                        Agentes
+                      </th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                         Famílias
                       </th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                         População
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                        Alertas
                       </th>
                       {canEdit && !usingMockData && (
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
@@ -692,7 +773,10 @@ const GestaoEquipesMicroareas = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                    {microareas.map((microarea) => (
+                    {filteredMicroareas.map((microarea) => {
+                      const agentCount = microareaAgentCounts.get(microarea.id) || 0;
+                      const alert = getMicroareaAlert(microarea, agentCount);
+                      return (
                       <tr key={microarea.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           <p className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -703,10 +787,16 @@ const GestaoEquipesMicroareas = () => {
                           {microarea.status}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-slate-300">
+                          {agentCount} agentes
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-slate-300">
                           {microarea.familias}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600 dark:text-slate-300">
                           {microarea.populacao}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-xs text-amber-600">
+                          {alert}
                         </td>
                         {canEdit && !usingMockData && (
                           <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -718,6 +808,12 @@ const GestaoEquipesMicroareas = () => {
                                 Visualizar microárea
                               </button>
                               <button
+                                onClick={() => openAssociateAgents(microarea)}
+                                className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50"
+                              >
+                                Vincular agentes
+                              </button>
+                              <button
                                 onClick={() => openEditMicroarea(microarea)}
                                 className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                               >
@@ -727,13 +823,17 @@ const GestaoEquipesMicroareas = () => {
                           </td>
                         )}
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               <div className="md:hidden p-4 space-y-3">
-                {microareas.map((microarea) => (
+                {filteredMicroareas.map((microarea) => {
+                  const agentCount = microareaAgentCounts.get(microarea.id) || 0;
+                  const alert = getMicroareaAlert(microarea, agentCount);
+                  return (
                   <div
                     key={microarea.id}
                     className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 space-y-2"
@@ -745,9 +845,11 @@ const GestaoEquipesMicroareas = () => {
                       <span className="text-xs text-gray-500 dark:text-slate-400">{microarea.status}</span>
                     </div>
                     <div className="flex gap-3 text-xs text-gray-500 dark:text-slate-400">
+                      <span>{agentCount} agentes</span>
                       <span>{microarea.familias} famílias</span>
                       <span>{microarea.populacao} pessoas</span>
                     </div>
+                    {alert && <p className="text-xs font-semibold text-amber-600">{alert}</p>}
                     {canEdit && !usingMockData && (
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -755,6 +857,12 @@ const GestaoEquipesMicroareas = () => {
                           className="rounded-full border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50"
                         >
                           Visualizar microárea
+                        </button>
+                        <button
+                          onClick={() => openAssociateAgents(microarea)}
+                          className="rounded-full border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-600 hover:bg-emerald-50"
+                        >
+                          Vincular agentes
                         </button>
                         <button
                           onClick={() => openEditMicroarea(microarea)}
@@ -765,7 +873,8 @@ const GestaoEquipesMicroareas = () => {
                       </div>
                     )}
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           </section>
@@ -826,17 +935,6 @@ const GestaoEquipesMicroareas = () => {
         onClose={() => setMicroareaDetailsOpen(false)}
         footer={(
           <div className="flex items-center justify-end gap-2">
-            {canEdit && !usingMockData && microareaDetailsTarget && (
-              <button
-                onClick={() => {
-                  setMicroareaDetailsOpen(false);
-                  openAssociateAgents(microareaDetailsTarget);
-                }}
-                className="rounded-full border border-blue-200 px-4 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50"
-              >
-                Vincular agentes
-              </button>
-            )}
             <button
               onClick={() => setMicroareaDetailsOpen(false)}
               className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
