@@ -400,29 +400,6 @@ const GestaoEquipesMicroareas = () => {
   };
 
 
-  const handleDeleteAgente = async (agente) => {
-    if (!canEdit || usingMockData) {
-      notify({ type: 'warning', message: 'Edição indisponível para este usuário ou em modo de demonstração.' });
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: 'Desassociar agente',
-      message: `Deseja desassociar ${agente.nome || 'este agente'} da microárea?`,
-      confirmLabel: 'Desassociar',
-      cancelLabel: 'Cancelar',
-    });
-    if (!confirmed) return;
-
-    try {
-      await gestaoEquipesService.deleteAgente(agente.id);
-      notify({ type: 'success', message: 'Agente desassociado com sucesso.' });
-      await loadData();
-    } catch (error) {
-      notify({ type: 'error', message: error.message || 'Erro ao desassociar agente.' });
-    }
-  };
-
   const handleDeleteMicroarea = async (microarea) => {
     if (!canEdit || usingMockData) {
       notify({ type: 'warning', message: 'Edição indisponível para este usuário ou em modo de demonstração.' });
@@ -616,11 +593,7 @@ const GestaoEquipesMicroareas = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                         Microárea
                       </th>
-                      {canEdit && !usingMockData && (
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                          Ações
-                        </th>
-                      )}
+                      
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
@@ -641,18 +614,7 @@ const GestaoEquipesMicroareas = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">
                           {agente.microarea_nome || agente.microarea}
                         </td>
-                        {canEdit && !usingMockData && (
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => handleDeleteAgente(agente)}
-                                className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                              >
-                                Desassociar
-                              </button>
-                            </div>
-                          </td>
-                        )}
+                        
                       </tr>
                     ))}
                   </tbody>
@@ -678,16 +640,7 @@ const GestaoEquipesMicroareas = () => {
                     <p className="text-xs text-gray-500 dark:text-slate-400">
                       {agente.microarea_nome || agente.microarea}
                     </p>
-                    {canEdit && !usingMockData && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleDeleteAgente(agente)}
-                          className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                        >
-                          Desassociar
-                        </button>
-                      </div>
-                    )}
+                    
                   </div>
                 ))}
               </div>

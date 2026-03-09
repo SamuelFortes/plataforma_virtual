@@ -349,8 +349,15 @@ async def associar_agentes_microarea(
             detail=f"Usuarios nao encontrados: {', '.join(map(str, faltantes))}.",
         )
 
+    agentes_existentes = await db.execute(
+        select(AgenteSaude.usuario_id).where(AgenteSaude.usuario_id.in_(usuario_ids))
+    )
+    agentes_ids = {row[0] for row in agentes_existentes.fetchall()}
+
     invalidos = [
-        usuario for usuario in usuarios.values() if (usuario.role or "USER").upper() != "ACS"
+        usuario
+        for usuario in usuarios.values()
+        if (usuario.role or "USER").upper() != "ACS" and usuario.id not in agentes_ids
     ]
     if invalidos:
         raise HTTPException(status_code=400, detail="Usuarios devem ter role ACS.")
@@ -507,11 +514,18 @@ async def listar_acs_users(
     """Lista usuarios ACS ativos para vinculo nas microareas."""
     _ensure_allowed(current_user)
 
-    result = await db.execute(
-        select(Usuario).where(
-            sqlfunc.upper(Usuario.role) == "ACS",
+    stmt = (
+        select(Usuario)
+        .outerjoin(AgenteSaude, AgenteSaude.usuario_id == Usuario.id)
+        .where(
             Usuario.ativo.is_(True),
-        ).order_by(Usuario.nome)
+            or_(
+                sqlfunc.upper(Usuario.role) == "ACS",
+                AgenteSaude.id.is_not(None),
+            ),
+        )
+        .order_by(Usuario.nome)
+        .distinct()
     )
-    usuarios = result.scalars().all()
+    usuarios = (await db.execute(stmt)).scalars().all()
     return [AcsUserOut(id=u.id, nome=u.nome, email=u.email) for u in usuarios]

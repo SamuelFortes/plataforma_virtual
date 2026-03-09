@@ -742,3 +742,17 @@ SELECT u.id, m.id, TRUE
 FROM public.usuarios u, public.microareas m
 WHERE u.email = 'francisca.lima.acs@plataforma.com' AND m.nome = 'Microárea 05 - Pindorama';
 ```
+
+### 2.12. Normalizar `role` de ACS (Garantir consistência) - **NOVO**
+Se houver usuários vinculados na tabela `agentes_saude` com `role` diferente de `ACS`, isso impede a listagem correta no sistema. Este script normaliza os papéis:
+
+```sql
+UPDATE public.usuarios u
+SET role = 'ACS'
+WHERE EXISTS (
+  SELECT 1
+  FROM public.agentes_saude a
+  WHERE a.usuario_id = u.id
+)
+AND u.role <> 'ACS';
+```
