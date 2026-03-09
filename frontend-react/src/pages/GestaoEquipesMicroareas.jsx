@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
 import { useNotifications } from '../components/ui/Notifications';
 import { gestaoEquipesService } from '../services/gestaoEquipesService';
 import { api } from '../services/api';
@@ -11,7 +10,6 @@ import {
   ChartBarIcon,
   UserCircleIcon,
   CheckCircleIcon,
-  DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
 
 // ─── Dados mockados (fallback caso a API não responda) ─────────────
@@ -131,10 +129,12 @@ const GestaoEquipesMicroareas = () => {
   const [microareaAgentsModalOpen, setMicroareaAgentsModalOpen] = useState(false);
   const [microareaAgentsTarget, setMicroareaAgentsTarget] = useState(null);
   const [selectedUsuarioIds, setSelectedUsuarioIds] = useState([]);
+  const [associateFromCreate, setAssociateFromCreate] = useState(false);
   const [microareaDetailsOpen, setMicroareaDetailsOpen] = useState(false);
   const [microareaDetailsTarget, setMicroareaDetailsTarget] = useState(null);
   const [microareaStatusFilter, setMicroareaStatusFilter] = useState('ALL');
   const [microareaSearch, setMicroareaSearch] = useState('');
+  const [microareaErrors, setMicroareaErrors] = useState({});
 
   const loadCatalogs = useCallback(async () => {
     try {
@@ -281,6 +281,7 @@ const GestaoEquipesMicroareas = () => {
     setLocalidadeInput('');
     setMicroareaModalMode('create');
     setMicroareaEditingId(null);
+    setMicroareaErrors({});
     setMicroareaModalOpen(true);
   };
 
@@ -297,6 +298,7 @@ const GestaoEquipesMicroareas = () => {
     setLocalidadeInput('');
     setMicroareaModalMode('edit');
     setMicroareaEditingId(microarea.id);
+    setMicroareaErrors({});
     setMicroareaModalOpen(true);
   };
 
@@ -318,6 +320,7 @@ const GestaoEquipesMicroareas = () => {
       return { ...prev, localidades: [...prev.localidades, ...additions] };
     });
     setLocalidadeInput('');
+    setMicroareaErrors((prev) => ({ ...prev, localidades: '' }));
   };
 
   const handleRemoveLocalidade = (value) => {
@@ -352,10 +355,11 @@ const GestaoEquipesMicroareas = () => {
     setLocalidadeDraftDescricao('');
   };
 
-  const openAssociateAgents = (microarea) => {
+  const openAssociateAgents = (microarea, options = {}) => {
     const currentIds = microareaAgentIds.get(microarea.id) || [];
     setMicroareaAgentsTarget(microarea);
     setSelectedUsuarioIds([...new Set(currentIds)]);
+    setAssociateFromCreate(Boolean(options.fromCreate));
     setMicroareaAgentsModalOpen(true);
   };
 
@@ -370,6 +374,7 @@ const GestaoEquipesMicroareas = () => {
       .map((agente) => agente.nome)
       .filter(Boolean)
   );
+
 
 
   const buildMicroareaPayload = () => {
@@ -396,6 +401,30 @@ const GestaoEquipesMicroareas = () => {
     return payload;
   };
 
+  const validateMicroareaForm = () => {
+    const errors = {};
+
+    if (!microareaForm.nome.trim()) {
+      errors.nome = 'O nome da microárea é obrigatório.';
+    }
+
+    if (localidadeInput.trim()) {
+      errors.localidades = 'Você digitou uma localidade. Clique em Adicionar antes de salvar.';
+    } else if (microareaForm.localidades.length === 0) {
+      errors.localidades = 'Inclua ao menos uma localidade.';
+    }
+
+    if (!microareaForm.descricao.trim()) {
+      errors.descricao = 'A descrição da microárea é obrigatória.';
+    }
+
+    if (!['COBERTA', 'DESCOBERTA'].includes(microareaForm.status)) {
+      errors.status = 'Status deve ser COBERTA ou DESCOBERTA.';
+    }
+
+    return errors;
+  };
+
   const handleSaveMicroarea = async () => {
     if (!canEdit || usingMockData) {
       notify({ type: 'warning', message: 'Edição indisponível para este usuário ou em modo de demonstração.' });
@@ -407,45 +436,48 @@ const GestaoEquipesMicroareas = () => {
       return;
     }
 
-    if (!microareaForm.nome.trim()) {
-      notify({ type: 'error', message: 'O nome da microárea é obrigatório.' });
-      return;
-    }
-
-    if (localidadeInput.trim()) {
-      notify({
-        type: 'warning',
-        message: 'Você digitou uma localidade. Clique em Adicionar antes de salvar.',
-      });
-      return;
-    }
-
-    if (microareaForm.localidades.length === 0) {
-      notify({ type: 'error', message: 'Inclua ao menos uma localidade.' });
-      return;
-    }
-
-    if (!microareaForm.descricao.trim()) {
-      notify({ type: 'error', message: 'A descrição da microárea é obrigatória.' });
+    const validationErrors = validateMicroareaForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setMicroareaErrors(validationErrors);
       return;
     }
 
     try {
       setSavingMicroarea(true);
       const payload = buildMicroareaPayload();
-
+      let createdMicroarea = null;
       if (microareaModalMode === 'create') {
-        await gestaoEquipesService.createMicroarea(payload);
+        createdMicroarea = await gestaoEquipesService.createMicroarea(payload);
         notify({ type: 'success', message: 'Microárea criada com sucesso.' });
       } else if (microareaEditingId) {
         await gestaoEquipesService.updateMicroarea(microareaEditingId, payload);
         notify({ type: 'success', message: 'Microárea atualizada com sucesso.' });
       }
-
       setMicroareaModalOpen(false);
       await loadData();
+      if (createdMicroarea?.id) {
+        openAssociateAgents(createdMicroarea, { fromCreate: true });
+      }
     } catch (error) {
-      notify({ type: 'error', message: error.message || 'Erro ao salvar microárea.' });
+      const message = error.message || '';
+      const inlineErrors = {};
+      if (message.toLowerCase().includes('localidade')) {
+        inlineErrors.localidades = message.replace(/^HTTP\s\d+:\s*/i, '');
+      }
+      if (message.toLowerCase().includes('descricao')) {
+        inlineErrors.descricao = message.replace(/^HTTP\s\d+:\s*/i, '');
+      }
+      if (message.toLowerCase().includes('status')) {
+        inlineErrors.status = message.replace(/^HTTP\s\d+:\s*/i, '');
+      }
+      if (message.toLowerCase().includes('nome')) {
+        inlineErrors.nome = message.replace(/^HTTP\s\d+:\s*/i, '');
+      }
+      if (Object.keys(inlineErrors).length > 0) {
+        setMicroareaErrors((prev) => ({ ...prev, ...inlineErrors }));
+      } else {
+        notify({ type: 'error', message: error.message || 'Erro ao salvar microárea.' });
+      }
     } finally {
       setSavingMicroarea(false);
     }
@@ -475,37 +507,6 @@ const GestaoEquipesMicroareas = () => {
     }
   };
 
-  const handleExportMicroareas = async () => {
-    if (!selectedUbsId) {
-      notify({ type: 'warning', message: 'Selecione uma UBS valida para exportar.' });
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `/api/gestao-equipes/microareas/export/pdf?ubs_id=${selectedUbsId}`,
-        { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' }
-      );
-
-      const disposition = response.headers?.['content-disposition'] || '';
-      let filename = 'relatorio_microareas.pdf';
-      const match = disposition.match(/filename="?([^";]+)"?/i);
-      if (match && match[1]) filename = match[1];
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      notify({ type: 'error', message: error.message || 'Erro ao exportar o PDF.' });
-    }
-  };
-
   const handleToggleUsuarioId = (usuarioId) => {
     setSelectedUsuarioIds((prev) =>
       prev.includes(usuarioId) ? prev.filter((id) => id !== usuarioId) : [...prev, usuarioId]
@@ -532,6 +533,7 @@ const GestaoEquipesMicroareas = () => {
       await gestaoEquipesService.associateAgentes(microareaAgentsTarget.id, selectedUsuarioIds);
       notify({ type: 'success', message: 'Agentes vinculados com sucesso.' });
       setMicroareaAgentsModalOpen(false);
+      setAssociateFromCreate(false);
       await loadData();
     } catch (error) {
       notify({ type: 'error', message: error.message || 'Erro ao vincular agentes.' });
@@ -554,15 +556,7 @@ const GestaoEquipesMicroareas = () => {
             </p>
           )}
         </div>
-        {canEdit && !usingMockData && (
-          <button
-            onClick={handleExportMicroareas}
-            className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/40 transition"
-          >
-            <DocumentArrowDownIcon className="h-4 w-4" />
-            Exportar relatorio PDF
-          </button>
-        )}
+        {canEdit && !usingMockData && null}
       </div>
 
       {loading && (
@@ -885,14 +879,20 @@ const GestaoEquipesMicroareas = () => {
       <Modal
         open={microareaAgentsModalOpen}
         title={microareaAgentsTarget ? `Vincular agentes - ${microareaAgentsTarget.nome}` : 'Vincular agentes'}
-        onClose={() => setMicroareaAgentsModalOpen(false)}
+        onClose={() => {
+          setMicroareaAgentsModalOpen(false);
+          setAssociateFromCreate(false);
+        }}
         footer={(
           <div className="flex items-center justify-end gap-2">
             <button
-              onClick={() => setMicroareaAgentsModalOpen(false)}
+              onClick={() => {
+                setMicroareaAgentsModalOpen(false);
+                setAssociateFromCreate(false);
+              }}
               className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
             >
-              Cancelar
+              {associateFromCreate ? 'Pular por agora' : 'Cancelar'}
             </button>
             <button
               onClick={handleAssociateAgents}
@@ -1024,20 +1024,32 @@ const GestaoEquipesMicroareas = () => {
             <input
               type="text"
               value={microareaForm.nome}
-              onChange={(event) => setMicroareaForm((prev) => ({ ...prev, nome: event.target.value }))}
+              onChange={(event) => {
+                setMicroareaForm((prev) => ({ ...prev, nome: event.target.value }));
+                setMicroareaErrors((prev) => ({ ...prev, nome: '' }));
+              }}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
               placeholder="Microárea 01 - Centro"
             />
+            {microareaErrors.nome && (
+              <p className="mt-1 text-xs font-semibold text-rose-600">{microareaErrors.nome}</p>
+            )}
           </Field>
           <Field label="Status">
             <select
               value={microareaForm.status}
-              onChange={(event) => setMicroareaForm((prev) => ({ ...prev, status: event.target.value }))}
+              onChange={(event) => {
+                setMicroareaForm((prev) => ({ ...prev, status: event.target.value }));
+                setMicroareaErrors((prev) => ({ ...prev, status: '' }));
+              }}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
             >
               <option value="COBERTA">COBERTA</option>
               <option value="DESCOBERTA">DESCOBERTA</option>
             </select>
+            {microareaErrors.status && (
+              <p className="mt-1 text-xs font-semibold text-rose-600">{microareaErrors.status}</p>
+            )}
           </Field>
           <div className="md:col-span-2">
             <Field label="Localidades (ruas, bairros, avenidas)">
@@ -1046,7 +1058,10 @@ const GestaoEquipesMicroareas = () => {
                   <input
                     type="text"
                     value={localidadeInput}
-                    onChange={(event) => setLocalidadeInput(event.target.value)}
+                    onChange={(event) => {
+                      setLocalidadeInput(event.target.value);
+                      setMicroareaErrors((prev) => ({ ...prev, localidades: '' }));
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         event.preventDefault();
@@ -1096,6 +1111,9 @@ const GestaoEquipesMicroareas = () => {
                 <p className="text-xs text-slate-500">
                   Clique em uma localidade para descrever a delimitacao.
                 </p>
+                {microareaErrors.localidades && (
+                  <p className="mt-1 text-xs font-semibold text-rose-600">{microareaErrors.localidades}</p>
+                )}
               </div>
             </Field>
           </div>
@@ -1121,11 +1139,17 @@ const GestaoEquipesMicroareas = () => {
             <Field label="Descrição (obrigatória)">
               <textarea
                 value={microareaForm.descricao}
-                onChange={(event) => setMicroareaForm((prev) => ({ ...prev, descricao: event.target.value }))}
+                onChange={(event) => {
+                  setMicroareaForm((prev) => ({ ...prev, descricao: event.target.value }));
+                  setMicroareaErrors((prev) => ({ ...prev, descricao: '' }));
+                }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
                 rows={3}
                 placeholder="Delimite a área: do posto X até a avenida Y, incluindo a praça Z."
               />
+              {microareaErrors.descricao && (
+                <p className="mt-1 text-xs font-semibold text-rose-600">{microareaErrors.descricao}</p>
+              )}
             </Field>
           </div>
           <div className="md:col-span-2">

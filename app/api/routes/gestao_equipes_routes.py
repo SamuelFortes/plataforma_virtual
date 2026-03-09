@@ -289,7 +289,6 @@ async def atualizar_microarea(
 
     for campo, valor in dados.items():
         setattr(microarea, campo, valor)
-
     await db.commit()
     await db.refresh(microarea)
     return microarea
@@ -377,7 +376,11 @@ async def associar_agentes_microarea(
     for usuario_id in usuario_ids:
         if usuario_id in existentes:
             continue
-        agente = AgenteSaude(usuario_id=usuario_id, microarea_id=microarea_id, ativo=True)
+        agente = AgenteSaude(
+            usuario_id=usuario_id,
+            microarea_id=microarea_id,
+            ativo=True,
+        )
         db.add(agente)
         novos.append(agente)
 
@@ -473,6 +476,7 @@ async def atualizar_agente(
 
     await db.commit()
     await db.refresh(agente)
+
 
     usuario = await db.get(Usuario, agente.usuario_id)
     microarea = await db.get(Microarea, agente.microarea_id)
