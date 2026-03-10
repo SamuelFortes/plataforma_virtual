@@ -7,11 +7,11 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import re
 
-from database import get_db
-from models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest, Cargo
-from utils.jwt_handler import create_access_token
-from utils.cpf_validator import validate_cpf
-from utils.deps import get_current_active_user, get_current_gestor_user
+from app.database import get_db
+from app.models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest, Cargo
+from app.utils.jwt_handler import create_access_token
+from app.utils.cpf_validator import validate_cpf
+from app.utils.deps import get_current_active_user, get_current_gestor_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 

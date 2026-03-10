@@ -3,10 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from typing import List, Optional
 
-from database import get_db
-from models.auth_models import Usuario
-from models.gestao_equipes_models import Microarea, AgenteSaude
-from schemas.gestao_equipes_schemas import (
+from app.database import get_db
+from app.models.auth_models import Usuario
+from app.models.gestao_equipes_models import Microarea, AgenteSaude
+from app.schemas.gestao_equipes_schemas import (
     MicroareaCreate,
     MicroareaUpdate,
     MicroareaOut,
@@ -16,8 +16,8 @@ from schemas.gestao_equipes_schemas import (
     KpisTerritorioOut,
     AcsUserOut,
 )
-from utils.deps import get_current_user
-from models.diagnostico_models import UBS
+from app.utils.deps import get_current_user
+from app.models.diagnostico_models import UBS
 
 gestao_equipes_router = APIRouter(tags=["Gestão de Equipes e Microáreas"])
 

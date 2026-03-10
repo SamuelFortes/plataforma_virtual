@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
-from database import get_db, engine, Base
+from app.database import get_db, engine, Base
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -77,14 +77,13 @@ app.add_middleware(
     max_age=600,
 )
 
-from routes.auth_routes import auth_router
-from routes.diagnostico_routes import diagnostico_router
-from routes.agendamento_routes import agendamento_router
-from routes.materiais_routes import materiais_router
-from routes.cronograma_routes import cronograma_router
-from routes.suporte_feedback_routes import suporte_feedback_router
-from routes.gestao_equipes_routes import gestao_equipes_router
-from routes.cargos_routes import cargos_router
+from app.api.routes.auth_routes import auth_router
+from app.api.routes.diagnostico_routes import diagnostico_router
+from app.api.routes.agendamento_routes import agendamento_router
+from app.api.routes.materiais_routes import materiais_router
+from app.api.routes.cronograma_routes import cronograma_router
+from app.api.routes.suporte_feedback_routes import suporte_feedback_router
+from app.api.routes.gestao_equipes_routes import gestao_equipes_router
 
 # Incluindo as rotas (utilizando o prefixo /api para padronização)
 app.include_router(auth_router, prefix="/api")
@@ -94,7 +93,6 @@ app.include_router(materiais_router, prefix="/api")
 app.include_router(cronograma_router, prefix="/api")
 app.include_router(suporte_feedback_router, prefix="/api")
 app.include_router(gestao_equipes_router, prefix="/api")
-app.include_router(cargos_router, prefix="/api")
 
 # Monta o diretório de assets estáticos do frontend
 assets_path = "frontend-react/dist/assets"
