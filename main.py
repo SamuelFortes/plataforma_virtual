@@ -50,7 +50,10 @@ async def _keep_alive_loop():
 async def lifespan(app: FastAPI):
     #Startup
     logger.info("Inicializando aplicação")
+    logger.info("DATABASE_URL driver: %s", os.getenv("DATABASE_URL", "NOT SET")[:30] + "...")
+    logger.info("Python %s | Platform %s", sys.version, sys.platform)
     keep_alive_task = asyncio.create_task(_keep_alive_loop())
+    logger.info("Startup completo — pronto para receber requisições")
     yield
 
     #Shutdown
@@ -77,23 +80,31 @@ app.add_middleware(
     max_age=600,
 )
 
-from app.api.routes.auth_routes import auth_router, cargos_router
-from app.api.routes.diagnostico_routes import diagnostico_router
-from app.api.routes.agendamento_routes import agendamento_router
-from app.api.routes.materiais_routes import materiais_router
-from app.api.routes.cronograma_routes import cronograma_router
-from app.api.routes.suporte_feedback_routes import suporte_feedback_router
-from app.api.routes.gestao_equipes_routes import gestao_equipes_router
+import traceback
 
-# Incluindo as rotas (utilizando o prefixo /api para padronização)
-app.include_router(auth_router, prefix="/api")
-app.include_router(cargos_router, prefix="/api")
-app.include_router(diagnostico_router, prefix="/api")
-app.include_router(agendamento_router, prefix="/api")
-app.include_router(materiais_router, prefix="/api")
-app.include_router(cronograma_router, prefix="/api")
-app.include_router(suporte_feedback_router, prefix="/api")
-app.include_router(gestao_equipes_router, prefix="/api")
+_routers_to_load = [
+    ("app.api.routes.auth_routes", ["auth_router", "cargos_router"]),
+    ("app.api.routes.diagnostico_routes", ["diagnostico_router"]),
+    ("app.api.routes.agendamento_routes", ["agendamento_router"]),
+    ("app.api.routes.materiais_routes", ["materiais_router"]),
+    ("app.api.routes.cronograma_routes", ["cronograma_router"]),
+    ("app.api.routes.suporte_feedback_routes", ["suporte_feedback_router"]),
+    ("app.api.routes.gestao_equipes_routes", ["gestao_equipes_router"]),
+]
+
+for module_path, router_names in _routers_to_load:
+    try:
+        module = __import__(module_path, fromlist=router_names)
+        for name in router_names:
+            router = getattr(module, name)
+            app.include_router(router, prefix="/api")
+            logger.info("Router '%s.%s' carregado com sucesso", module_path, name)
+    except Exception as exc:
+        logger.critical(
+            "FALHA ao carregar router de '%s': %s\n%s",
+            module_path, exc, traceback.format_exc(),
+        )
+        raise
 
 # Monta o diretório de assets estáticos do frontend
 assets_path = "frontend-react/dist/assets"
