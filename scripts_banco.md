@@ -345,11 +345,12 @@ create table public.microareas (
   id serial not null,
   ubs_id integer not null,
   nome character varying(100) not null,
+  localidades jsonb not null default '[]'::jsonb,
+  descricao text not null default '',
+  observacoes text null,
   status character varying(20) not null default 'COBERTA',
   populacao integer not null default 0,
   familias integer not null default 0,
-  bairro character varying(150) null,
-  geojson jsonb null,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null,
   constraint microareas_pkey primary key (id),
@@ -359,13 +360,13 @@ create table public.microareas (
 create table public.agentes_saude (
   id serial not null,
   usuario_id integer not null,
-  microarea_id integer not null,
+  microarea_id integer null,
   ativo boolean not null default true,
   created_at timestamp with time zone null default now(),
   updated_at timestamp with time zone null,
   constraint agentes_saude_pkey primary key (id),
   constraint agentes_saude_usuario_id_fkey foreign KEY (usuario_id) references usuarios (id),
-  constraint agentes_saude_microarea_id_fkey foreign KEY (microarea_id) references microareas (id) on delete CASCADE
+  constraint agentes_saude_microarea_id_fkey foreign KEY (microarea_id) references microareas (id) on delete SET NULL
 ) TABLESPACE pg_default;
 ```
 
@@ -655,10 +656,12 @@ CREATE TABLE public.microareas (
     id serial NOT NULL,
     ubs_id integer NOT NULL,
     nome character varying(100) NOT NULL,
+    localidades jsonb NOT NULL DEFAULT '[]'::jsonb,
+    descricao text NOT NULL DEFAULT '',
+    observacoes text NULL,
     status character varying(20) NOT NULL DEFAULT 'COBERTA',
     populacao integer NOT NULL DEFAULT 0,
     familias integer NOT NULL DEFAULT 0,
-    geojson jsonb NULL,
     created_at timestamp with time zone NULL DEFAULT now(),
     updated_at timestamp with time zone NULL,
 
@@ -670,14 +673,14 @@ CREATE TABLE public.microareas (
 CREATE TABLE public.agentes_saude (
     id serial NOT NULL,
     usuario_id integer NOT NULL,
-    microarea_id integer NOT NULL,
+    microarea_id integer NULL,
     ativo boolean NOT NULL DEFAULT true,
     created_at timestamp with time zone NULL DEFAULT now(),
     updated_at timestamp with time zone NULL,
 
     CONSTRAINT agentes_saude_pkey PRIMARY KEY (id),
     CONSTRAINT agentes_saude_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id),
-    CONSTRAINT agentes_saude_microarea_id_fkey FOREIGN KEY (microarea_id) REFERENCES public.microareas (id) ON DELETE CASCADE
+    CONSTRAINT agentes_saude_microarea_id_fkey FOREIGN KEY (microarea_id) REFERENCES public.microareas (id) ON DELETE SET NULL
 ) TABLESPACE pg_default;
 ```
 
@@ -688,25 +691,25 @@ Popula as tabelas com dados fictícios de 7 microáreas (5 cobertas + 2 descober
 -- =============================================
 -- MICROÁREAS (7 total: 5 cobertas, 2 descobertas)
 -- =============================================
-INSERT INTO public.microareas (ubs_id, nome, status, populacao, familias) VALUES
-(3, 'Microárea 01 - Baixa do Aragão', 'COBERTA', 2100, 210),
-(3, 'Microárea 02 - Centro', 'COBERTA', 1850, 185),
-(3, 'Microárea 03 - Piauí', 'COBERTA', 2300, 230),
-(3, 'Microárea 04 - Frei Higino', 'COBERTA', 1950, 195),
-(3, 'Microárea 05 - Pindorama', 'COBERTA', 2200, 220),
-(3, 'Microárea 06 - São José', 'DESCOBERTA', 1100, 110),
-(3, 'Microárea 07 - Rodoviária', 'DESCOBERTA', 950, 95);
+INSERT INTO public.microareas (ubs_id, nome, localidades, descricao, observacoes, status, populacao, familias) VALUES
+(3, 'Microárea 01 - Baixa do Aragão', '[{"nome":"Baixa do Aragão","descricao":"Bairro residencial próximo ao centro"}]'::jsonb, 'Área urbana com predominância residencial', NULL, 'COBERTA', 2100, 210),
+(3, 'Microárea 02 - Centro', '[{"nome":"Centro","descricao":"Região central da cidade"}]'::jsonb, 'Região central com comércio e residências', NULL, 'COBERTA', 1850, 185),
+(3, 'Microárea 03 - Piauí', '[{"nome":"Piauí","descricao":"Bairro tradicional"}]'::jsonb, 'Bairro tradicional com infraestrutura consolidada', NULL, 'COBERTA', 2300, 230),
+(3, 'Microárea 04 - Frei Higino', '[{"nome":"Frei Higino","descricao":"Bairro residencial"}]'::jsonb, 'Área residencial de média densidade', NULL, 'COBERTA', 1950, 195),
+(3, 'Microárea 05 - Pindorama', '[{"nome":"Pindorama","descricao":"Bairro em expansão"}]'::jsonb, 'Bairro em expansão com novas construções', NULL, 'COBERTA', 2200, 220),
+(3, 'Microárea 06 - São José', '[{"nome":"São José","descricao":"Bairro periférico"}]'::jsonb, 'Área periférica com necessidade de cobertura', NULL, 'DESCOBERTA', 1100, 110),
+(3, 'Microárea 07 - Rodoviária', '[{"nome":"Rodoviária","descricao":"Região próxima à rodoviária"}]'::jsonb, 'Região próxima à rodoviária com população flutuante', NULL, 'DESCOBERTA', 950, 95);
 
 -- =============================================
 -- USUÁRIOS ACS (Agentes Comunitários de Saúde)
 -- Senha padrão: Plataforma123
 -- =============================================
-INSERT INTO public.usuarios (nome, email, senha, cpf, role, ativo, tentativas_login, welcome_email_sent, created_at, updated_at) VALUES
-('Maria José da Silva', 'maria.silva.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '712.345.678-01', 'ACS', TRUE, 0, TRUE, NOW(), NOW()),
-('Francisco Alves de Sousa', 'francisco.sousa.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '823.456.789-02', 'ACS', TRUE, 0, TRUE, NOW(), NOW()),
-('Ana Cláudia Ferreira', 'ana.ferreira.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '934.567.890-03', 'ACS', TRUE, 0, TRUE, NOW(), NOW()),
-('José Ribamar Costa', 'jose.costa.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '145.678.901-04', 'ACS', TRUE, 0, TRUE, NOW(), NOW()),
-('Francisca das Chagas Lima', 'francisca.lima.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '256.789.012-05', 'ACS', TRUE, 0, TRUE, NOW(), NOW());
+INSERT INTO public.usuarios (nome, email, senha, cpf, role, cargo, ativo, tentativas_login, welcome_email_sent, created_at, updated_at) VALUES
+('Maria José da Silva', 'maria.silva.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '712.345.678-01', 'PROFISSIONAL', 'Agente Comunitário de Saúde', TRUE, 0, TRUE, NOW(), NOW()),
+('Francisco Alves de Sousa', 'francisco.sousa.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '823.456.789-02', 'PROFISSIONAL', 'Agente Comunitário de Saúde', TRUE, 0, TRUE, NOW(), NOW()),
+('Ana Cláudia Ferreira', 'ana.ferreira.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '934.567.890-03', 'PROFISSIONAL', 'Agente Comunitário de Saúde', TRUE, 0, TRUE, NOW(), NOW()),
+('José Ribamar Costa', 'jose.costa.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '145.678.901-04', 'PROFISSIONAL', 'Agente Comunitário de Saúde', TRUE, 0, TRUE, NOW(), NOW()),
+('Francisca das Chagas Lima', 'francisca.lima.acs@plataforma.com', '$pbkdf2-sha256$29000$3VvL.X/PuVeqFYJQ6v3fmw$DeWP4kJ4JIgk3lpxXsRXEagRvrprhj82aahb1egA1Es', '256.789.012-05', 'PROFISSIONAL', 'Agente Comunitário de Saúde', TRUE, 0, TRUE, NOW(), NOW());
 
 -- =============================================
 -- AGENTES DE SAÚDE (vinculando usuários às microáreas)
@@ -738,4 +741,32 @@ INSERT INTO public.agentes_saude (usuario_id, microarea_id, ativo)
 SELECT u.id, m.id, TRUE
 FROM public.usuarios u, public.microareas m
 WHERE u.email = 'francisca.lima.acs@plataforma.com' AND m.nome = 'Microárea 05 - Pindorama';
+```
+
+### 2.12. Migração: Atualizar tabelas `microareas` e `agentes_saude` (caso já existam) - **NOVO**
+Se as tabelas `microareas` e `agentes_saude` já existem no Supabase com a estrutura antiga, execute os scripts abaixo para migrar.
+
+```sql
+-- =============================================
+-- MIGRAÇÃO: microareas - remover colunas antigas, adicionar novas
+-- =============================================
+ALTER TABLE public.microareas DROP COLUMN IF EXISTS bairro;
+ALTER TABLE public.microareas DROP COLUMN IF EXISTS geojson;
+
+ALTER TABLE public.microareas ADD COLUMN IF NOT EXISTS localidades jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.microareas ADD COLUMN IF NOT EXISTS descricao text NOT NULL DEFAULT '';
+ALTER TABLE public.microareas ADD COLUMN IF NOT EXISTS observacoes text NULL;
+
+-- =============================================
+-- MIGRAÇÃO: agentes_saude - tornar microarea_id nullable + SET NULL
+-- =============================================
+ALTER TABLE public.agentes_saude
+  DROP CONSTRAINT IF EXISTS agentes_saude_microarea_id_fkey;
+
+ALTER TABLE public.agentes_saude
+  ALTER COLUMN microarea_id DROP NOT NULL;
+
+ALTER TABLE public.agentes_saude
+  ADD CONSTRAINT agentes_saude_microarea_id_fkey
+  FOREIGN KEY (microarea_id) REFERENCES public.microareas(id) ON DELETE SET NULL;
 ```

@@ -77,7 +77,7 @@ app.add_middleware(
     max_age=600,
 )
 
-from app.api.routes.auth_routes import auth_router
+from app.api.routes.auth_routes import auth_router, cargos_router
 from app.api.routes.diagnostico_routes import diagnostico_router
 from app.api.routes.agendamento_routes import agendamento_router
 from app.api.routes.materiais_routes import materiais_router
@@ -87,6 +87,7 @@ from app.api.routes.gestao_equipes_routes import gestao_equipes_router
 
 # Incluindo as rotas (utilizando o prefixo /api para padronização)
 app.include_router(auth_router, prefix="/api")
+app.include_router(cargos_router, prefix="/api")
 app.include_router(diagnostico_router, prefix="/api")
 app.include_router(agendamento_router, prefix="/api")
 app.include_router(materiais_router, prefix="/api")

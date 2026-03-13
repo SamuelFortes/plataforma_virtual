@@ -1,38 +1,45 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, List, Union
 from datetime import datetime
 
 
 # ─── Microarea ────────────────────────────────────────────────────────
 
+class LocalidadeItem(BaseModel):
+    nome: str
+    descricao: Optional[str] = None
+
 class MicroareaCreate(BaseModel):
     ubs_id: int
     nome: str
+    localidades: List[Union[LocalidadeItem, str]]
+    descricao: str = Field(min_length=1)
+    observacoes: Optional[str] = None
     status: str = "COBERTA"
     populacao: int = 0
     familias: int = 0
-    bairro: Optional[str] = None
-    geojson: Optional[dict] = None
 
 
 class MicroareaUpdate(BaseModel):
     nome: Optional[str] = None
+    localidades: Optional[List[Union[LocalidadeItem, str]]] = None
+    descricao: Optional[str] = None
+    observacoes: Optional[str] = None
     status: Optional[str] = None
     populacao: Optional[int] = None
     familias: Optional[int] = None
-    bairro: Optional[str] = None
-    geojson: Optional[dict] = None
 
 
 class MicroareaOut(BaseModel):
     id: int
     ubs_id: int
     nome: str
+    localidades: List[LocalidadeItem]
+    descricao: str
+    observacoes: Optional[str] = None
     status: str
     populacao: int
     familias: int
-    bairro: Optional[str] = None
-    geojson: Optional[dict] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -43,7 +50,7 @@ class MicroareaOut(BaseModel):
 
 class AgenteSaudeCreate(BaseModel):
     usuario_id: int
-    microarea_id: int
+    microarea_id: Optional[int] = None
     ativo: bool = True
 
 
@@ -56,7 +63,7 @@ class AgenteSaudeUpdate(BaseModel):
 class AgenteSaudeOut(BaseModel):
     id: int
     usuario_id: int
-    microarea_id: int
+    microarea_id: Optional[int] = None
     ativo: bool
     nome: Optional[str] = None
     microarea_nome: Optional[str] = None
@@ -66,6 +73,10 @@ class AgenteSaudeOut(BaseModel):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MicroareaAgentesUpdate(BaseModel):
+    usuario_ids: List[int]
 
 
 # ─── KPIs do Território ──────────────────────────────────────────────

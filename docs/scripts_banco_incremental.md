@@ -127,9 +127,24 @@ INSERT INTO cargos (nome) VALUES
 	('Agente Comunitário de Saúde'),('Técnico de Enfermagem')
 ON CONFLICT DO NOTHING;
 
--- 7) Adicionar coluna bairro na tabela microareas (Mapa de bairros/microáreas)
--- Permite associar uma microárea a um bairro específico de Parnaíba,
--- refletindo no mapa interativo da seção de gestão de equipes.
-ALTER TABLE public.microareas
-ADD COLUMN IF NOT EXISTS bairro character varying(150) NULL;
+-- 7) Migração: Atualizar tabelas microareas e agentes_saude
+-- Remove colunas bairro/geojson, adiciona localidades/descricao/observacoes
+-- Torna microarea_id nullable com ON DELETE SET NULL
+
+ALTER TABLE public.microareas DROP COLUMN IF EXISTS bairro;
+ALTER TABLE public.microareas DROP COLUMN IF EXISTS geojson;
+
+ALTER TABLE public.microareas ADD COLUMN IF NOT EXISTS localidades jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.microareas ADD COLUMN IF NOT EXISTS descricao text NOT NULL DEFAULT '';
+ALTER TABLE public.microareas ADD COLUMN IF NOT EXISTS observacoes text NULL;
+
+ALTER TABLE public.agentes_saude
+  DROP CONSTRAINT IF EXISTS agentes_saude_microarea_id_fkey;
+
+ALTER TABLE public.agentes_saude
+  ALTER COLUMN microarea_id DROP NOT NULL;
+
+ALTER TABLE public.agentes_saude
+  ADD CONSTRAINT agentes_saude_microarea_id_fkey
+  FOREIGN KEY (microarea_id) REFERENCES public.microareas(id) ON DELETE SET NULL;
 

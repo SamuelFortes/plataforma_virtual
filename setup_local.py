@@ -246,10 +246,12 @@ c.execute("""CREATE TABLE IF NOT EXISTS microareas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ubs_id INTEGER NOT NULL REFERENCES ubs(id) ON DELETE CASCADE,
     nome VARCHAR(100) NOT NULL,
+    localidades JSON NOT NULL DEFAULT '[]',
+    descricao TEXT NOT NULL DEFAULT '',
+    observacoes TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'COBERTA',
     populacao INTEGER NOT NULL DEFAULT 0,
     familias INTEGER NOT NULL DEFAULT 0,
-    geojson JSON,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME
 )""")
@@ -257,7 +259,7 @@ c.execute("""CREATE TABLE IF NOT EXISTS microareas (
 c.execute("""CREATE TABLE IF NOT EXISTS agentes_saude (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
-    microarea_id INTEGER NOT NULL REFERENCES microareas(id) ON DELETE CASCADE,
+    microarea_id INTEGER REFERENCES microareas(id) ON DELETE SET NULL,
     ativo BOOLEAN NOT NULL DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-from typing import Literal
+from typing import Literal, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from passlib.context import CryptContext
@@ -16,6 +16,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
+cargos_router = APIRouter(tags=["cargos"])
 limiter = Limiter(key_func=get_remote_address)
 
 # Usa pbkdf2_sha256 para evitar dependência direta do backend bcrypt
@@ -674,5 +675,63 @@ async def confirm_welcome_email_sent(
         
     usuario.welcome_email_sent = True
     await db.commit()
-    
+
     return {"message": "Status de boas-vindas atualizado"}
+
+
+# ─── CRUD de Cargos ──────────────────────────────────────────────────
+
+class CargoOut(BaseModel):
+    id: int
+    nome: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CargoCreate(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=255)
+
+
+@cargos_router.get("/cargos", response_model=List[CargoOut])
+async def listar_cargos(db: AsyncSession = Depends(get_db)):
+    """Lista todos os cargos disponíveis."""
+    resultado = await db.execute(select(Cargo).order_by(Cargo.nome))
+    return resultado.scalars().all()
+
+
+@cargos_router.post("/cargos", response_model=CargoOut, status_code=status.HTTP_201_CREATED)
+async def criar_cargo(
+    payload: CargoCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_gestor_user),
+):
+    """Cria um novo cargo (somente GESTOR)."""
+    nome = payload.nome.strip()
+    if not nome:
+        raise HTTPException(status_code=400, detail="Nome do cargo é obrigatório.")
+
+    resultado = await db.execute(select(Cargo).where(Cargo.nome == nome))
+    if resultado.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Cargo já existe.")
+
+    cargo = Cargo(nome=nome)
+    db.add(cargo)
+    await db.commit()
+    await db.refresh(cargo)
+    return cargo
+
+
+@cargos_router.delete("/cargos/{cargo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remover_cargo(
+    cargo_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_gestor_user),
+):
+    """Remove um cargo (somente GESTOR)."""
+    resultado = await db.execute(select(Cargo).where(Cargo.id == cargo_id))
+    cargo = resultado.scalar_one_or_none()
+    if not cargo:
+        raise HTTPException(status_code=404, detail="Cargo não encontrado.")
+
+    await db.delete(cargo)
+    await db.commit()
+    return None

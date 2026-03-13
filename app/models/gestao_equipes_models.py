@@ -11,16 +11,17 @@ class Microarea(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     ubs_id = Column(Integer, ForeignKey("ubs.id", ondelete="CASCADE"), nullable=False)
     nome = Column(String(100), nullable=False)
+    localidades = Column(JSONB().with_variant(JSON, "sqlite"), nullable=False, default=list)
+    descricao = Column(Text, nullable=False)
+    observacoes = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="COBERTA")  # COBERTA | DESCOBERTA
     populacao = Column(Integer, nullable=False, default=0)
     familias = Column(Integer, nullable=False, default=0)
-    bairro = Column(String(150), nullable=True)
-    geojson = Column(JSONB().with_variant(JSON, "sqlite"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     ubs = relationship("UBS", backref="microareas")
-    agentes = relationship("AgenteSaude", back_populates="microarea", cascade="all, delete-orphan")
+    agentes = relationship("AgenteSaude", back_populates="microarea")
 
 
 class AgenteSaude(Base):
@@ -28,7 +29,7 @@ class AgenteSaude(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    microarea_id = Column(Integer, ForeignKey("microareas.id", ondelete="CASCADE"), nullable=False)
+    microarea_id = Column(Integer, ForeignKey("microareas.id", ondelete="SET NULL"), nullable=True)
     ativo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
