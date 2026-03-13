@@ -112,7 +112,8 @@ async def ping():
 @limiter.limit("10/minute")
 async def health_check(request: Request, db: AsyncSession = Depends(get_db)):
     try:
-        await db.execute("SELECT 1") #Ping no banco
+        from sqlalchemy import text
+        await db.execute(text("SELECT 1")) #Ping no banco
         return {"status": "ok", "database": "connected"}
     except Exception as e:
         return {"status": "error", "database": str(e)}
