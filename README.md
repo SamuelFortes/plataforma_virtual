@@ -2,6 +2,8 @@
 
 Este projeto é uma plataforma para gestão e diagnóstico de Unidades Básicas de Saúde (UBS), permitindo a coleta de dados situacionais, solicitações profissionais e agendamentos.
 
+Nota: README atualizado para registrar estabilidade da branch atual.
+
 ## 🚀 Como Executar o Projeto Localmente
 
 Siga os passos abaixo para configurar o ambiente de desenvolvimento em sua máquina.
