@@ -1215,11 +1215,11 @@ async def export_situational_report_pdf(
     módulos da plataforma (problemas/intervenções, microáreas, agendamentos,
     cronograma e materiais educativos) usando ReportLab.
     """
-    from models.agendamento_models import Agendamento
-    from models.cronograma_models import CronogramaEvent
-    from models.gestao_equipes_models import Microarea, AgenteSaude
-    from models.materiais_models import EducationalMaterial, EducationalMaterialFile
-    from models.auth_models import ProfissionalUbs
+    from app.models.agendamento_models import Agendamento
+    from app.models.cronograma_models import CronogramaEvent
+    from app.models.gestao_equipes_models import Microarea, AgenteSaude
+    from app.models.materiais_models import EducationalMaterial, EducationalMaterialFile
+    from app.models.auth_models import ProfissionalUbs
 
     diagnosis = await get_full_diagnosis(ubs_id=ubs_id, db=db, current_user=current_user)
 
