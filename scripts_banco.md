@@ -120,6 +120,28 @@ create table public.ubs (
   responsavel_cargo character varying(255) null,
   responsavel_contato character varying(255) null,
   fluxo_agenda_acesso text null,
+  cronograma_ubs_seg_manha text null,
+  cronograma_ubs_seg_tarde text null,
+  cronograma_ubs_ter_manha text null,
+  cronograma_ubs_ter_tarde text null,
+  cronograma_ubs_qua_manha text null,
+  cronograma_ubs_qua_tarde text null,
+  cronograma_ubs_qui_manha text null,
+  cronograma_ubs_qui_tarde text null,
+  cronograma_ubs_sex_manha text null,
+  cronograma_ubs_sex_tarde text null,
+  cronograma_ubs_observacoes text null,
+  cronograma_residentes_seg_manha text null,
+  cronograma_residentes_seg_tarde text null,
+  cronograma_residentes_ter_manha text null,
+  cronograma_residentes_ter_tarde text null,
+  cronograma_residentes_qua_manha text null,
+  cronograma_residentes_qua_tarde text null,
+  cronograma_residentes_qui_manha text null,
+  cronograma_residentes_qui_tarde text null,
+  cronograma_residentes_sex_manha text null,
+  cronograma_residentes_sex_tarde text null,
+  cronograma_residentes_observacoes text null,
   status character varying(20) not null,
   submitted_at timestamp with time zone null,
   submitted_by integer null,
@@ -762,4 +784,40 @@ Com a remoção da funcionalidade de anexos/imagens do relatório situacional, e
 
 ```sql
 DROP TABLE IF EXISTS public.ubs_attachments;
+```
+
+### 2.14. Adicionar Campos de Cronograma Semanal no Relatório Situacional - **NOVO**
+Esses campos persistem os cronogramas da UBS e dos residentes para reaproveitamento automático em novos relatórios/PDFs.
+
+```sql
+ALTER TABLE public.ubs
+ADD COLUMN IF NOT EXISTS cronograma_ubs_seg_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_seg_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_ter_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_ter_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qua_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qua_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qui_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qui_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_sex_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_sex_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_seg_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_seg_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_ter_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_ter_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qua_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qua_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qui_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qui_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_sex_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_sex_tarde text;
+```
+
+### 2.15. Adicionar Campos de Observações dos Cronogramas - **NOVO**
+Campos para observações livres abaixo dos blocos de cronograma da UBS e dos residentes.
+
+```sql
+ALTER TABLE public.ubs
+ADD COLUMN IF NOT EXISTS cronograma_ubs_observacoes text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_observacoes text;
 ```

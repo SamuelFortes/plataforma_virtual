@@ -52,6 +52,30 @@ class UBSBase(BaseModel):
     responsavel_contato: Optional[str] = Field(None, max_length=255)
     fluxo_agenda_acesso: Optional[str] = None
 
+    cronograma_ubs_seg_manha: Optional[str] = None
+    cronograma_ubs_seg_tarde: Optional[str] = None
+    cronograma_ubs_ter_manha: Optional[str] = None
+    cronograma_ubs_ter_tarde: Optional[str] = None
+    cronograma_ubs_qua_manha: Optional[str] = None
+    cronograma_ubs_qua_tarde: Optional[str] = None
+    cronograma_ubs_qui_manha: Optional[str] = None
+    cronograma_ubs_qui_tarde: Optional[str] = None
+    cronograma_ubs_sex_manha: Optional[str] = None
+    cronograma_ubs_sex_tarde: Optional[str] = None
+    cronograma_ubs_observacoes: Optional[str] = None
+
+    cronograma_residentes_seg_manha: Optional[str] = None
+    cronograma_residentes_seg_tarde: Optional[str] = None
+    cronograma_residentes_ter_manha: Optional[str] = None
+    cronograma_residentes_ter_tarde: Optional[str] = None
+    cronograma_residentes_qua_manha: Optional[str] = None
+    cronograma_residentes_qua_tarde: Optional[str] = None
+    cronograma_residentes_qui_manha: Optional[str] = None
+    cronograma_residentes_qui_tarde: Optional[str] = None
+    cronograma_residentes_sex_manha: Optional[str] = None
+    cronograma_residentes_sex_tarde: Optional[str] = None
+    cronograma_residentes_observacoes: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 

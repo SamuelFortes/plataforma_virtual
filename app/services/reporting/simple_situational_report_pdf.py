@@ -4,22 +4,24 @@ from datetime import datetime
 from io import BytesIO
 from typing import Any, Optional
 
+import re
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-PRIMARY = colors.HexColor("#0B1F2A")
-ACCENT = colors.HexColor("#2A9D8F")
-ACCENT2 = colors.HexColor("#3B82F6")
-MUTED = colors.HexColor("#6B7280")
-LIGHT = colors.HexColor("#F3F4F6")
-TABLE_HEADER = colors.HexColor("#E5E7EB")
-TABLE_GRID = colors.HexColor("#D1D5DB")
+PRIMARY = colors.HexColor("#0A2740")
+ACCENT = colors.HexColor("#0E7490")
+ACCENT2 = colors.HexColor("#1D4ED8")
+MUTED = colors.HexColor("#475569")
+LIGHT = colors.HexColor("#F8FAFC")
+TABLE_HEADER = colors.HexColor("#E2E8F0")
+TABLE_GRID = colors.HexColor("#CBD5E1")
 SECTION_BG = colors.HexColor("#EFF6FF")
 PRIORITY_BG = colors.HexColor("#FEF3C7")
-SUCCESS_BG = colors.HexColor("#D1FAE5")
+SUCCESS_BG = colors.HexColor("#DCFCE7")
 WARNING_BG = colors.HexColor("#FEF9C3")
 
 
@@ -85,6 +87,100 @@ def _chunk(items: list[str], size: int) -> list[list[str]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
+def _weekly_schedule_from_ubs(ubs, prefix: str) -> dict[str, dict[str, str]]:
+    dias = ["seg", "ter", "qua", "qui", "sex"]
+    resultado: dict[str, dict[str, str]] = {}
+    for dia in dias:
+        resultado[dia] = {
+            "manha": getattr(ubs, f"{prefix}_{dia}_manha", None) or "-",
+            "tarde": getattr(ubs, f"{prefix}_{dia}_tarde", None) or "-",
+        }
+    return resultado
+
+
+def _weekly_observacoes_from_ubs(ubs, prefix: str) -> str:
+    return (getattr(ubs, f"{prefix}_observacoes", None) or "").strip()
+
+
+def _bulleted_html(text: str) -> str:
+    items = [line.strip() for line in str(text or "").split("\n") if line.strip()]
+    if not items:
+        return "-"
+    return "<br/>".join([f"&bull; {_escape_xml(_wrap_hard_tokens(item))}" for item in items])
+
+
+def _wrap_hard_tokens(text: str, chunk: int = 24) -> str:
+    parts = re.split(r"(\s+)", str(text or ""))
+    wrapped = []
+    for part in parts:
+        if not part or part.isspace() or len(part) <= chunk:
+            wrapped.append(part)
+            continue
+        wrapped.append("-".join([part[i:i + chunk] for i in range(0, len(part), chunk)]))
+    return "".join(wrapped)
+
+
+def _has_weekly_content(schedule: dict[str, dict[str, str]]) -> bool:
+    for dia in schedule.values():
+        if (dia.get("manha") or "-") != "-":
+            return True
+        if (dia.get("tarde") or "-") != "-":
+            return True
+    return False
+
+
+def _calendar_day_blocks(manha: str, tarde: str, style_table: ParagraphStyle) -> Table:
+    data = [
+        [Paragraph(f"<b>Manhã</b><br/>{_bulleted_html(manha)}", style_table)],
+        [Paragraph(f"<b>Tarde</b><br/>{_bulleted_html(tarde)}", style_table)],
+    ]
+    table = Table(data, colWidths=[3.0 * cm])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#E0F2FE")),
+                ("BACKGROUND", (0, 1), (0, 1), colors.HexColor("#DCFCE7")),
+                ("BOX", (0, 0), (-1, -1), 0.35, TABLE_GRID),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, TABLE_GRID),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    return table
+
+
+def _calendar_like_weekly_table(schedule: dict[str, dict[str, str]], style_table: ParagraphStyle, style_table_header: ParagraphStyle) -> Table:
+    headers = ["SEG", "TER", "QUA", "QUI", "SEX"]
+    days = ["seg", "ter", "qua", "qui", "sex"]
+    header_row = [Paragraph(_escape_xml(h), style_table_header) for h in headers]
+    body_row = [
+        _calendar_day_blocks(schedule[d]["manha"], schedule[d]["tarde"], style_table)
+        for d in days
+    ]
+    table = Table([header_row, body_row], colWidths=[3.15 * cm, 3.15 * cm, 3.15 * cm, 3.15 * cm, 3.15 * cm])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), TABLE_HEADER),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("TEXTCOLOR", (0, 0), (-1, 0), PRIMARY),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.3, TABLE_GRID),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return table
+
+
 def _zebra_style(row_count: int) -> TableStyle:
     style = TableStyle(
         [
@@ -146,49 +242,6 @@ def _fmt_date(value: Any) -> str:
     return str(value)
 
 
-def _fmt_datetime(value: Any) -> str:
-    if not value:
-        return "-"
-    if isinstance(value, datetime):
-        return value.strftime("%d/%m/%Y %H:%M")
-    return str(value)
-
-
-def _status_label(status: Optional[str]) -> str:
-    mapping = {
-        "PLANEJADO": "Planejado",
-        "EM_ANDAMENTO": "Em andamento",
-        "CONCLUIDO": "Concluído",
-        "AGENDADO": "Agendado",
-        "CANCELADO": "Cancelado",
-        "REALIZADO": "Realizado",
-        "REAGENDADO": "Reagendado",
-        "COBERTA": "Coberta",
-        "DESCOBERTA": "Descoberta",
-    }
-    return mapping.get(status or "", status or "-")
-
-
-def _tipo_evento_label(tipo: Optional[str]) -> str:
-    mapping = {
-        "SALA_VACINA": "Sala de Vacina",
-        "FARMACIA_BASICA": "Farmácia Básica",
-        "REUNIAO_EQUIPE": "Reunião de Equipe",
-        "OUTRO": "Outro",
-    }
-    return mapping.get(tipo or "", tipo or "-")
-
-
-def _recorrencia_label(rec: Optional[str]) -> str:
-    mapping = {
-        "NONE": "Sem recorrência",
-        "DAILY": "Diária",
-        "WEEKLY": "Semanal",
-        "MONTHLY": "Mensal",
-    }
-    return mapping.get(rec or "", rec or "-")
-
-
 def generate_situational_report_pdf_simple(
     diagnosis,
     municipality: str = "",
@@ -204,8 +257,9 @@ def generate_situational_report_pdf_simple(
         name="Title",
         parent=styles["Title"],
         fontName="Helvetica-Bold",
-        fontSize=22,
+        fontSize=18,
         textColor=PRIMARY,
+        leading=22,
         spaceAfter=6,
     )
     style_kicker = ParagraphStyle(
@@ -220,7 +274,8 @@ def generate_situational_report_pdf_simple(
         name="SectionTitle",
         parent=styles["Heading2"],
         textColor=PRIMARY,
-        fontSize=13,
+        fontSize=12,
+        leading=14,
         spaceBefore=12,
         spaceAfter=6,
     )
@@ -237,12 +292,14 @@ def generate_situational_report_pdf_simple(
         parent=styles["BodyText"],
         fontSize=10,
         leading=14,
+        wordWrap="CJK",
     )
     style_table = ParagraphStyle(
         name="TableCell",
         parent=styles["BodyText"],
-        fontSize=8,
-        leading=10,
+        fontSize=8.7,
+        leading=11,
+        wordWrap="CJK",
     )
     style_table_header = ParagraphStyle(
         name="TableHeader",
@@ -259,6 +316,33 @@ def generate_situational_report_pdf_simple(
         leading=10,
         textColor=MUTED,
     )
+    style_cover_org = ParagraphStyle(
+        name="CoverOrg",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=11,
+        alignment=1,
+        textColor=PRIMARY,
+    )
+    style_cover_title = ParagraphStyle(
+        name="CoverTitle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=17,
+        leading=21,
+        alignment=1,
+        textColor=PRIMARY,
+    )
+    style_cover_meta = ParagraphStyle(
+        name="CoverMeta",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=12,
+        alignment=1,
+        textColor=MUTED,
+    )
 
     story = []
     section_num = [0]
@@ -268,12 +352,39 @@ def generate_situational_report_pdf_simple(
         return f"{section_num[0]}. {title}"
 
     # ==================== CAPA ====================
-    header_table = Table([[Paragraph("RELATÓRIO SITUACIONAL", style_title)]], colWidths=[16.5 * cm])
+    equipe_label = (ubs.identificacao_equipe or "UBS").strip()
+    unidade_label = (ubs.nome_ubs or "UNIDADE BÁSICA DE SAÚDE").strip()
+    periodo_atualizacao = (reference_period or getattr(ubs, "periodo_referencia", None) or datetime.now().strftime("%m/%Y")).upper()
+    cover_title = f"RELATÓRIO SITUACIONAL DA {equipe_label} - {unidade_label}"
+    municipio_label = (municipality or "Município").strip()
+
+    org_data = [
+        [Paragraph("ESTADO", style_cover_org)],
+        [Paragraph(f"PREFEITURA MUNICIPAL DE {_escape_xml(municipio_label.upper())}", style_cover_org)],
+        [Paragraph("SECRETARIA DE SAÚDE - ATENÇÃO BÁSICA", style_cover_org)],
+    ]
+    org_table = Table(org_data, colWidths=[16.5 * cm])
+    org_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E8EEF5")),
+                ("BOX", (0, 0), (-1, -1), 0.6, ACCENT2),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    story.append(org_table)
+    story.append(Spacer(1, 8))
+
+    header_table = Table([[Paragraph(_escape_xml(cover_title), style_cover_title)]], colWidths=[16.5 * cm])
     header_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), LIGHT),
-                ("BOX", (0, 0), (-1, -1), 0.25, TABLE_GRID),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F6FAFF")),
+                ("BOX", (0, 0), (-1, -1), 0.6, ACCENT2),
                 ("LEFTPADDING", (0, 0), (-1, -1), 10),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 10),
                 ("TOPPADDING", (0, 0), (-1, -1), 10),
@@ -283,10 +394,8 @@ def generate_situational_report_pdf_simple(
     )
     story.append(header_table)
     story.append(Spacer(1, 6))
-    story.append(Paragraph(_escape_xml(municipality or "Município"), style_kicker))
-    if reference_period:
-        story.append(Paragraph(_escape_xml(reference_period), style_kicker))
-    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", style_kicker))
+    story.append(Paragraph(f"Atualizado em: {_escape_xml(periodo_atualizacao)}", style_cover_meta))
+    story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", style_cover_meta))
     story.append(Spacer(1, 12))
 
     summary_data = [
@@ -307,7 +416,7 @@ def generate_situational_report_pdf_simple(
     story.append(summary_table)
 
     # ==================== 1. IDENTIFICAÇÃO ====================
-    story.append(_section_header(next_section("Identificação e Caracterização"), style_h2))
+    story.append(_section_header(next_section("Identificação e Caracterização da UBS"), style_h2))
     story.append(Spacer(1, 4))
     table_data = [
         ["Campo", "Valor"],
@@ -339,8 +448,38 @@ def generate_situational_report_pdf_simple(
     story.append(Paragraph("Observações gerais", style_h3))
     story.append(_boxed(ubs.observacoes_gerais or "-", style_body))
 
-    # ==================== 2. SERVIÇOS ====================
-    story.append(_section_header(next_section("Serviços Oferecidos"), style_h2))
+    # ==================== 2. CRONOGRAMAS ====================
+    story.append(_section_header(next_section("Cronogramas da UBS e dos Residentes"), style_h2))
+    story.append(Spacer(1, 4))
+
+    cronograma_ubs = _weekly_schedule_from_ubs(ubs, "cronograma_ubs")
+    cronograma_residentes = _weekly_schedule_from_ubs(ubs, "cronograma_residentes")
+    obs_ubs = _weekly_observacoes_from_ubs(ubs, "cronograma_ubs")
+    obs_residentes = _weekly_observacoes_from_ubs(ubs, "cronograma_residentes")
+
+    if _has_weekly_content(cronograma_ubs):
+        story.append(Paragraph("Cronograma da UBS", style_h3))
+        story.append(_calendar_like_weekly_table(cronograma_ubs, style_table, style_table_header))
+        if obs_ubs:
+            story.append(Spacer(1, 3))
+            story.append(Paragraph("Observações do cronograma da UBS", style_small))
+            story.append(_boxed(obs_ubs, style_body))
+        story.append(Spacer(1, 8))
+
+    if _has_weekly_content(cronograma_residentes):
+        story.append(Paragraph("Cronograma dos Residentes da UFDPar", style_h3))
+        story.append(_calendar_like_weekly_table(cronograma_residentes, style_table, style_table_header))
+        if obs_residentes:
+            story.append(Spacer(1, 3))
+            story.append(Paragraph("Observações do cronograma dos residentes", style_small))
+            story.append(_boxed(obs_residentes, style_body))
+        story.append(Spacer(1, 8))
+
+    if not _has_weekly_content(cronograma_ubs) and not _has_weekly_content(cronograma_residentes):
+        story.append(Paragraph("Nenhum cronograma registrado.", style_body))
+
+    # ==================== 3. SERVIÇOS ====================
+    story.append(_section_header(next_section("Serviços Ofertados pela UBS"), style_h2))
     story.append(Spacer(1, 4))
     if services:
         rows = _chunk(services, 2)
@@ -362,7 +501,36 @@ def generate_situational_report_pdf_simple(
     story.append(Spacer(1, 6))
     story.append(Paragraph(f"Outros serviços: {_escape_xml(ubs.outros_servicos or '-')}", style_body))
 
-    # ==================== 3. INDICADORES ====================
+    # ==================== 4. PERFIL DO TERRITÓRIO ====================
+    story.append(_section_header(next_section("Perfil da UBS e do Território"), style_h2))
+    story.append(Spacer(1, 4))
+    territory = diagnosis.territory_profile
+    story.append(Paragraph("Perfil da UBS", style_h3))
+    story.append(_boxed(getattr(territory, "descricao_territorio", "-"), style_body))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Nossas potencialidades", style_h3))
+    story.append(_boxed(getattr(territory, "potencialidades_territorio", "-"), style_body))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Nossos riscos e vulnerabilidades", style_h3))
+    story.append(_boxed(getattr(territory, "riscos_vulnerabilidades", "-"), style_body))
+
+    # ==================== 5. NECESSIDADES ====================
+    story.append(_section_header(next_section("Problemas e Solicitações / Necessidades"), style_h2))
+    story.append(Spacer(1, 4))
+    needs = diagnosis.needs
+    story.append(Paragraph("Problemas", style_h3))
+    story.append(_boxed(getattr(needs, "problemas_identificados", "-"), style_body))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Solicitações / Necessidades para a UBS", style_h3))
+    story.append(_boxed(getattr(needs, "necessidades_equipamentos_insumos", "-"), style_body))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Solicitações / Necessidades para os ACS", style_h3))
+    story.append(_boxed(getattr(needs, "necessidades_especificas_acs", "-"), style_body))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Infraestrutura e manutenção", style_h3))
+    story.append(_boxed(getattr(needs, "necessidades_infraestrutura_manutencao", "-"), style_body))
+
+    # ==================== 6. INDICADORES ====================
     story.append(_section_header(next_section("Indicadores Epidemiológicos"), style_h2))
     story.append(Spacer(1, 4))
     indicators = diagnosis.indicators_latest or []
@@ -392,8 +560,8 @@ def generate_situational_report_pdf_simple(
     else:
         story.append(Paragraph("Nenhum indicador registrado.", style_body))
 
-    # ==================== 4. RECURSOS HUMANOS ====================
-    story.append(_section_header(next_section("Recursos Humanos"), style_h2))
+    # ==================== 7. RECURSOS HUMANOS ====================
+    story.append(_section_header(next_section("Nossos Profissionais"), style_h2))
     story.append(Spacer(1, 4))
     groups = diagnosis.professional_groups or []
     if groups:
@@ -410,265 +578,6 @@ def generate_situational_report_pdf_simple(
         story.append(g_table)
     else:
         story.append(Paragraph("Nenhum profissional registrado.", style_body))
-
-    # ==================== 5. PERFIL DO TERRITÓRIO ====================
-    story.append(_section_header(next_section("Perfil do Território"), style_h2))
-    story.append(Spacer(1, 4))
-    territory = diagnosis.territory_profile
-    story.append(Paragraph("Descrição do território", style_h3))
-    story.append(_boxed(getattr(territory, "descricao_territorio", "-"), style_body))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("Potencialidades", style_h3))
-    story.append(_boxed(getattr(territory, "potencialidades_territorio", "-"), style_body))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("Riscos e vulnerabilidades", style_h3))
-    story.append(_boxed(getattr(territory, "riscos_vulnerabilidades", "-"), style_body))
-
-    # ==================== 6. NECESSIDADES ====================
-    story.append(_section_header(next_section("Necessidades Identificadas"), style_h2))
-    story.append(Spacer(1, 4))
-    needs = diagnosis.needs
-    story.append(Paragraph("Problemas identificados", style_h3))
-    story.append(_boxed(getattr(needs, "problemas_identificados", "-"), style_body))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("Necessidades de equipamentos e insumos", style_h3))
-    story.append(_boxed(getattr(needs, "necessidades_equipamentos_insumos", "-"), style_body))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("Necessidades específicas dos ACS", style_h3))
-    story.append(_boxed(getattr(needs, "necessidades_especificas_acs", "-"), style_body))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("Infraestrutura e manutenção", style_h3))
-    story.append(_boxed(getattr(needs, "necessidades_infraestrutura_manutencao", "-"), style_body))
-
-    # ==================== 7. MAPA DE PROBLEMAS E INTERVENÇÕES (GUT) ====================
-    problems = extra.get("problems") or []
-    story.append(PageBreak())
-    story.append(_section_header(next_section("Mapa de Problemas e Intervenções (Matriz GUT)"), style_h2))
-    story.append(Spacer(1, 4))
-
-    if problems:
-        # Tabela resumo dos problemas
-        p_data = [[
-            Paragraph("Problema", style_table_header),
-            Paragraph("G", style_table_header),
-            Paragraph("U", style_table_header),
-            Paragraph("T", style_table_header),
-            Paragraph("Score", style_table_header),
-            Paragraph("Prioritário", style_table_header),
-        ]]
-        for p in problems:
-            p_data.append([
-                Paragraph(_escape_xml(p["titulo"]), style_table),
-                Paragraph(str(p["gut_gravidade"]), style_table),
-                Paragraph(str(p["gut_urgencia"]), style_table),
-                Paragraph(str(p["gut_tendencia"]), style_table),
-                Paragraph(str(p["gut_score"]), style_table),
-                Paragraph("Sim" if p.get("is_prioritario") else "Não", style_table),
-            ])
-        p_table = Table(p_data, colWidths=[6.5 * cm, 1.5 * cm, 1.5 * cm, 1.5 * cm, 2.0 * cm, 3.5 * cm])
-        p_table.setStyle(_zebra_style(len(p_data)))
-        story.append(p_table)
-        story.append(Spacer(1, 8))
-
-        # Detalhes de cada problema com intervenções e ações
-        for idx, p in enumerate(problems):
-            story.append(Paragraph(
-                f"<b>{idx + 1}. {_escape_xml(p['titulo'])}</b>"
-                f" &nbsp;(Score GUT: {p['gut_score']}"
-                f"{' — Prioritário' if p.get('is_prioritario') else ''})",
-                style_body,
-            ))
-            if p.get("descricao"):
-                story.append(Paragraph(_escape_xml(p["descricao"]), style_small))
-            story.append(Spacer(1, 4))
-
-            interventions = p.get("interventions") or []
-            if interventions:
-                for iv in interventions:
-                    story.append(Paragraph(
-                        f"<b>Intervenção:</b> {_escape_xml(iv['objetivo'])} "
-                        f"[{_escape_xml(_status_label(iv.get('status')))}]",
-                        style_body,
-                    ))
-                    if iv.get("metas"):
-                        story.append(Paragraph(f"Metas: {_escape_xml(iv['metas'])}", style_small))
-                    if iv.get("responsavel"):
-                        story.append(Paragraph(f"Responsável: {_escape_xml(iv['responsavel'])}", style_small))
-
-                    actions = iv.get("actions") or []
-                    if actions:
-                        a_data = [[
-                            Paragraph("Ação", style_table_header),
-                            Paragraph("Prazo", style_table_header),
-                            Paragraph("Status", style_table_header),
-                            Paragraph("Observações", style_table_header),
-                        ]]
-                        for a in actions:
-                            a_data.append([
-                                Paragraph(_escape_xml(a.get("acao") or "-"), style_table),
-                                Paragraph(_escape_xml(_fmt_date(a.get("prazo"))), style_table),
-                                Paragraph(_escape_xml(_status_label(a.get("status"))), style_table),
-                                Paragraph(_escape_xml(a.get("observacoes") or "-"), style_table),
-                            ])
-                        a_table = Table(a_data, colWidths=[5.0 * cm, 2.5 * cm, 2.5 * cm, 6.5 * cm])
-                        a_table.setStyle(_zebra_style(len(a_data)))
-                        story.append(Spacer(1, 2))
-                        story.append(a_table)
-                    story.append(Spacer(1, 4))
-            else:
-                story.append(Paragraph("Sem intervenções registradas.", style_small))
-            story.append(Spacer(1, 6))
-    else:
-        story.append(Paragraph("Nenhum problema registrado no Mapa de Problemas e Intervenções.", style_body))
-
-    # ==================== 8. GESTÃO DE EQUIPES E MICROÁREAS ====================
-    microareas = extra.get("microareas") or []
-    story.append(_section_header(next_section("Gestão de Equipes e Microáreas"), style_h2))
-    story.append(Spacer(1, 4))
-
-    if microareas:
-        m_data = [[
-            Paragraph("Microárea", style_table_header),
-            Paragraph("Bairro", style_table_header),
-            Paragraph("Status", style_table_header),
-            Paragraph("População", style_table_header),
-            Paragraph("Famílias", style_table_header),
-            Paragraph("ACS Vinculado(s)", style_table_header),
-        ]]
-        total_pop = 0
-        total_fam = 0
-        cobertas = 0
-        for m in microareas:
-            pop = m.get("populacao") or 0
-            fam = m.get("familias") or 0
-            total_pop += pop
-            total_fam += fam
-            if m.get("status") == "COBERTA":
-                cobertas += 1
-            agentes = m.get("agentes") or []
-            agentes_str = ", ".join(a.get("nome", "-") for a in agentes) if agentes else "Sem ACS"
-            m_data.append([
-                Paragraph(_escape_xml(m["nome"]), style_table),
-                Paragraph(_escape_xml(m.get("bairro") or "-"), style_table),
-                Paragraph(_escape_xml(_status_label(m.get("status"))), style_table),
-                Paragraph(str(pop), style_table),
-                Paragraph(str(fam), style_table),
-                Paragraph(_escape_xml(agentes_str), style_table),
-            ])
-        m_table = Table(m_data, colWidths=[2.8 * cm, 2.5 * cm, 2.0 * cm, 2.2 * cm, 2.0 * cm, 5.0 * cm])
-        m_table.setStyle(_zebra_style(len(m_data)))
-        story.append(m_table)
-        story.append(Spacer(1, 6))
-
-        # KPIs resumidos
-        total = len(microareas)
-        story.append(Paragraph(
-            f"<b>Resumo:</b> {total} microáreas | {cobertas} cobertas | "
-            f"{total - cobertas} descobertas | "
-            f"População total: {total_pop} | Famílias: {total_fam}",
-            style_body,
-        ))
-    else:
-        story.append(Paragraph("Nenhuma microárea registrada.", style_body))
-
-    # ==================== 9. AGENDAMENTOS ====================
-    agendamentos = extra.get("agendamentos") or []
-    story.append(_section_header(next_section("Agendamento de Consultas"), style_h2))
-    story.append(Spacer(1, 4))
-
-    if agendamentos:
-        # Resumo por status
-        status_counts = {}
-        for ag in agendamentos:
-            s = ag.get("status") or "DESCONHECIDO"
-            status_counts[s] = status_counts.get(s, 0) + 1
-        status_parts = [f"{_status_label(k)}: {v}" for k, v in sorted(status_counts.items())]
-        story.append(Paragraph(
-            f"<b>Total de agendamentos:</b> {len(agendamentos)} &nbsp;|&nbsp; " + " &nbsp;|&nbsp; ".join(status_parts),
-            style_body,
-        ))
-        story.append(Spacer(1, 6))
-
-        ag_data = [[
-            Paragraph("Data/Hora", style_table_header),
-            Paragraph("Paciente", style_table_header),
-            Paragraph("Profissional", style_table_header),
-            Paragraph("Status", style_table_header),
-            Paragraph("Observações", style_table_header),
-        ]]
-        for ag in agendamentos[:50]:  # limitar a 50 para não estourar o PDF
-            ag_data.append([
-                Paragraph(_escape_xml(_fmt_datetime(ag.get("data_hora"))), style_table),
-                Paragraph(_escape_xml(ag.get("paciente_nome") or "-"), style_table),
-                Paragraph(_escape_xml(ag.get("profissional_nome") or "-"), style_table),
-                Paragraph(_escape_xml(_status_label(ag.get("status"))), style_table),
-                Paragraph(_escape_xml(ag.get("observacoes") or "-"), style_table),
-            ])
-        ag_table = Table(ag_data, colWidths=[3.0 * cm, 3.5 * cm, 3.5 * cm, 2.5 * cm, 4.0 * cm])
-        ag_table.setStyle(_zebra_style(len(ag_data)))
-        story.append(ag_table)
-        if len(agendamentos) > 50:
-            story.append(Paragraph(f"Exibindo 50 de {len(agendamentos)} agendamentos.", style_small))
-    else:
-        story.append(Paragraph("Nenhum agendamento registrado.", style_body))
-
-    # ==================== 10. CRONOGRAMA ====================
-    cronograma = extra.get("cronograma") or []
-    story.append(_section_header(next_section("Cronograma de Atividades"), style_h2))
-    story.append(Spacer(1, 4))
-
-    if cronograma:
-        c_data = [[
-            Paragraph("Título", style_table_header),
-            Paragraph("Tipo", style_table_header),
-            Paragraph("Local", style_table_header),
-            Paragraph("Início", style_table_header),
-            Paragraph("Fim", style_table_header),
-            Paragraph("Recorrência", style_table_header),
-        ]]
-        for ev in cronograma:
-            c_data.append([
-                Paragraph(_escape_xml(ev.get("titulo") or "-"), style_table),
-                Paragraph(_escape_xml(_tipo_evento_label(ev.get("tipo"))), style_table),
-                Paragraph(_escape_xml(ev.get("local") or "-"), style_table),
-                Paragraph(_escape_xml(_fmt_datetime(ev.get("inicio"))), style_table),
-                Paragraph(_escape_xml(_fmt_datetime(ev.get("fim"))), style_table),
-                Paragraph(_escape_xml(_recorrencia_label(ev.get("recorrencia"))), style_table),
-            ])
-        c_table = Table(c_data, colWidths=[4.0 * cm, 2.5 * cm, 2.5 * cm, 2.8 * cm, 2.8 * cm, 1.9 * cm])
-        c_table.setStyle(_zebra_style(len(c_data)))
-        story.append(c_table)
-    else:
-        story.append(Paragraph("Nenhum evento registrado no cronograma.", style_body))
-
-    # ==================== 11. MATERIAIS EDUCATIVOS ====================
-    materiais = extra.get("materiais") or []
-    story.append(_section_header(next_section("Materiais Educativos"), style_h2))
-    story.append(Spacer(1, 4))
-
-    if materiais:
-        mat_data = [[
-            Paragraph("Título", style_table_header),
-            Paragraph("Categoria", style_table_header),
-            Paragraph("Público-alvo", style_table_header),
-            Paragraph("Descrição", style_table_header),
-            Paragraph("Arquivos", style_table_header),
-        ]]
-        for mat in materiais:
-            files = mat.get("files") or []
-            files_str = ", ".join(f.get("original_filename", "-") for f in files) if files else "Sem arquivos"
-            mat_data.append([
-                Paragraph(_escape_xml(mat.get("titulo") or "-"), style_table),
-                Paragraph(_escape_xml(mat.get("categoria") or "-"), style_table),
-                Paragraph(_escape_xml(mat.get("publico_alvo") or "-"), style_table),
-                Paragraph(_escape_xml(mat.get("descricao") or "-"), style_table),
-                Paragraph(_escape_xml(files_str), style_table),
-            ])
-        mat_table = Table(mat_data, colWidths=[3.5 * cm, 2.5 * cm, 2.5 * cm, 4.5 * cm, 3.5 * cm])
-        mat_table.setStyle(_zebra_style(len(mat_data)))
-        story.append(mat_table)
-    else:
-        story.append(Paragraph("Nenhum material educativo registrado.", style_body))
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(

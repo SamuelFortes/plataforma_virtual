@@ -407,6 +407,275 @@ const ProfessionalsSection = ({ ubsId, initialData, onUpdate }) => {
     );
 }
 
+const CronogramasSection = ({ ubsId, data, onFieldChange, onSave }) => {
+    const [entryDrafts, setEntryDrafts] = useState({});
+    const [entryTimes, setEntryTimes] = useState({});
+    const [editorTarget, setEditorTarget] = useState(null);
+    const days = [
+        { key: 'seg', label: 'SEG' },
+        { key: 'ter', label: 'TER' },
+        { key: 'qua', label: 'QUA' },
+        { key: 'qui', label: 'QUI' },
+        { key: 'sex', label: 'SEX' },
+    ];
+
+    useEffect(() => {
+        if (!editorTarget) return;
+        const onEsc = (e) => {
+            if (e.key === 'Escape') setEditorTarget(null);
+        };
+        window.addEventListener('keydown', onEsc);
+        return () => window.removeEventListener('keydown', onEsc);
+    }, [editorTarget]);
+
+    const parseItems = (value) =>
+        String(value || '')
+            .split('\n')
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+    const updateField = (name, value) => {
+        onFieldChange({ target: { name, value, type: 'text' } });
+    };
+
+    const addItem = (fieldName, withTime = false) => {
+        const draft = (entryDrafts[fieldName] || '').trim();
+        if (!draft) return;
+        const time = (entryTimes[fieldName] || '').trim();
+        const itemText = withTime && time ? `[${time}] ${draft}` : draft;
+        const items = parseItems(data?.[fieldName]);
+        items.push(itemText);
+        updateField(fieldName, items.join('\n'));
+        setEntryDrafts((prev) => ({ ...prev, [fieldName]: '' }));
+        if (withTime) {
+            setEntryTimes((prev) => ({ ...prev, [fieldName]: '' }));
+        }
+    };
+
+    const removeItem = (fieldName, index) => {
+        const items = parseItems(data?.[fieldName]);
+        const next = items.filter((_, idx) => idx !== index);
+        updateField(fieldName, next.join('\n'));
+    };
+
+    const countActivities = (prefix) => {
+        let total = 0;
+        days.forEach((day) => {
+            total += parseItems(data?.[`${prefix}_${day.key}_manha`]).length;
+            total += parseItems(data?.[`${prefix}_${day.key}_tarde`]).length;
+        });
+        return total;
+    };
+
+    const scheduleBlock = (fieldName, colorClasses, label, withTime = false) => {
+        const items = parseItems(data?.[fieldName]);
+        return (
+            <div className={`rounded-lg border p-3 ${colorClasses}`}>
+                <label className="block text-sm font-semibold mb-2">{label}</label>
+                <div className="space-y-2">
+                    {withTime && (
+                        <div>
+                            <label className="block text-xs mb-1 text-slate-600 dark:text-slate-300">Horário (opcional)</label>
+                            <input
+                                type="text"
+                                value={entryTimes[fieldName] || ''}
+                                onChange={(e) => setEntryTimes((prev) => ({ ...prev, [fieldName]: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-600 rounded-md dark:text-white"
+                                placeholder="Ex.: 08:30 ou 14:00-15:30"
+                            />
+                        </div>
+                    )}
+                    <div>
+                        <label className="block text-xs mb-1 text-slate-600 dark:text-slate-300">Atividade</label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={entryDrafts[fieldName] || ''}
+                                onChange={(e) => setEntryDrafts((prev) => ({ ...prev, [fieldName]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        addItem(fieldName, withTime);
+                                    }
+                                }}
+                                className="w-full min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-600 rounded-md dark:text-white"
+                                placeholder="Digite atividade e pressione Enter"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => addItem(fieldName, withTime)}
+                                className="px-3 py-2 rounded-md bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <ul className="list-disc pl-5 mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300 max-h-40 overflow-y-auto pr-1">
+                    {items.map((item, idx) => (
+                        <li key={`${fieldName}-${idx}`} className="flex items-start gap-2 min-w-0">
+                            <span className="min-w-0 flex-1 break-words leading-snug">{item}</span>
+                            <button
+                                type="button"
+                                onClick={() => removeItem(fieldName, idx)}
+                                className="text-red-500 hover:text-red-700 text-xs font-semibold shrink-0"
+                            >
+                                remover
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    };
+
+    const renderGrid = (title, prefix, fullScreen = false) => (
+        <div className={`rounded-2xl border border-gray-200 dark:border-slate-700 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 p-4 mb-6 shadow-sm ${fullScreen ? 'min-h-[60vh]' : ''}`}>
+            <div className="flex items-center justify-between px-2 pb-3 border-b border-gray-200 dark:border-slate-700">
+                <h4 className="font-bold text-emerald-800 dark:text-emerald-300">{title}</h4>
+                <span className="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    SEG a SEX
+                </span>
+            </div>
+            <div className={`grid grid-cols-1 ${fullScreen ? 'md:grid-cols-2 2xl:grid-cols-3' : 'md:grid-cols-2 xl:grid-cols-5'} gap-3 mt-4`}>
+                {days.map((day) => (
+                    <div key={day.key} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                        <div className="px-3 py-2 text-center text-xs font-semibold tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {day.label} 
+                        </div>
+                        <div className="p-3 space-y-2">
+                            {scheduleBlock(
+                                `${prefix}_${day.key}_manha`,
+                                'border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
+                                'Manhã',
+                                prefix === 'cronograma_residentes'
+                            )}
+                            {scheduleBlock(
+                                `${prefix}_${day.key}_tarde`,
+                                'border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300',
+                                'Tarde',
+                                prefix === 'cronograma_residentes'
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {prefix === 'cronograma_residentes' && (
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Dica: preencha o campo de horario (opcional) para cada atividade, ex.: 08:30 ou 14:00-15:30.
+                </p>
+            )}
+            <div className="mt-4">
+                <TextAreaField
+                    label="Observações do cronograma"
+                    name={`${prefix}_observacoes`}
+                    value={data?.[`${prefix}_observacoes`] || ''}
+                    onChange={onFieldChange}
+                    rows={3}
+                    placeholder="Ex.: ressalvas, mudanças quinzenais, atividades extras e orientações gerais."
+                />
+            </div>
+        </div>
+    );
+
+    return (
+        <SectionCard
+            title="Cronogramas para o Relatório"
+            subtitle="Use o editor expandido para visualizar e personalizar o cronograma com mais espaço."
+            disabled={!ubsId}
+            lockedMessage="Salve o rascunho para habilitar esta seção"
+        >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20 p-4">
+                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-300">Cronograma da UBS</h4>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+                        {countActivities('cronograma_ubs')} atividades cadastradas
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setEditorTarget('cronograma_ubs')}
+                        className="mt-3 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+                    >
+                        Personalizar cronograma
+                    </button>
+                </div>
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 p-4">
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-300">Cronograma dos Residentes</h4>
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                        {countActivities('cronograma_residentes')} atividades cadastradas
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setEditorTarget('cronograma_residentes')}
+                        className="mt-3 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                    >
+                        Personalizar cronograma
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    onClick={onSave}
+                    className="bg-emerald-600 text-white px-6 py-2 rounded font-bold hover:bg-emerald-700"
+                >
+                    Salvar cronogramas (reutilizável)
+                </button>
+            </div>
+
+            {editorTarget && (
+                <div className="fixed inset-0 z-[70] bg-black/55 flex items-center justify-center p-4">
+                    <div className="w-full max-w-[1400px] max-h-[92vh] overflow-hidden rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col">
+                        <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                                    {editorTarget === 'cronograma_ubs' ? 'Editor: Cronograma da UBS' : 'Editor: Cronograma dos Residentes'}
+                                </h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Mais espaço para montar atividades por dia e turno.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setEditorTarget(null)}
+                                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white text-2xl leading-none"
+                                aria-label="Fechar editor"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="p-5 overflow-y-auto">
+                            {editorTarget === 'cronograma_ubs'
+                                ? renderGrid('Cronograma da UBS', 'cronograma_ubs', true)
+                                : renderGrid('Cronograma dos Residentes', 'cronograma_residentes', true)}
+                        </div>
+
+                        <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setEditorTarget(null)}
+                                className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
+                            >
+                                Voltar ao formulário
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    await onSave();
+                                    setEditorTarget(null);
+                                }}
+                                className="px-4 py-2 rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700"
+                            >
+                                Salvar e fechar editor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </SectionCard>
+    );
+}
+
 // --- MODAL DE RELATÓRIO COMPLETO ---
 
 const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
@@ -457,6 +726,28 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
             fluxo_agenda_acesso: '',
             descritivos_gerais: '',
             observacoes_gerais: '',
+            cronograma_ubs_seg_manha: ubsInfo?.cronograma_ubs_seg_manha || '',
+            cronograma_ubs_seg_tarde: ubsInfo?.cronograma_ubs_seg_tarde || '',
+            cronograma_ubs_ter_manha: ubsInfo?.cronograma_ubs_ter_manha || '',
+            cronograma_ubs_ter_tarde: ubsInfo?.cronograma_ubs_ter_tarde || '',
+            cronograma_ubs_qua_manha: ubsInfo?.cronograma_ubs_qua_manha || '',
+            cronograma_ubs_qua_tarde: ubsInfo?.cronograma_ubs_qua_tarde || '',
+            cronograma_ubs_qui_manha: ubsInfo?.cronograma_ubs_qui_manha || '',
+            cronograma_ubs_qui_tarde: ubsInfo?.cronograma_ubs_qui_tarde || '',
+            cronograma_ubs_sex_manha: ubsInfo?.cronograma_ubs_sex_manha || '',
+            cronograma_ubs_sex_tarde: ubsInfo?.cronograma_ubs_sex_tarde || '',
+            cronograma_ubs_observacoes: ubsInfo?.cronograma_ubs_observacoes || '',
+            cronograma_residentes_seg_manha: ubsInfo?.cronograma_residentes_seg_manha || '',
+            cronograma_residentes_seg_tarde: ubsInfo?.cronograma_residentes_seg_tarde || '',
+            cronograma_residentes_ter_manha: ubsInfo?.cronograma_residentes_ter_manha || '',
+            cronograma_residentes_ter_tarde: ubsInfo?.cronograma_residentes_ter_tarde || '',
+            cronograma_residentes_qua_manha: ubsInfo?.cronograma_residentes_qua_manha || '',
+            cronograma_residentes_qua_tarde: ubsInfo?.cronograma_residentes_qua_tarde || '',
+            cronograma_residentes_qui_manha: ubsInfo?.cronograma_residentes_qui_manha || '',
+            cronograma_residentes_qui_tarde: ubsInfo?.cronograma_residentes_qui_tarde || '',
+            cronograma_residentes_sex_manha: ubsInfo?.cronograma_residentes_sex_manha || '',
+            cronograma_residentes_sex_tarde: ubsInfo?.cronograma_residentes_sex_tarde || '',
+            cronograma_residentes_observacoes: ubsInfo?.cronograma_residentes_observacoes || '',
             numero_habitantes_ativos: ubsInfo?.numero_habitantes_ativos ?? '',
             numero_familias_cadastradas: ubsInfo?.numero_familias_cadastradas ?? '',
             numero_microareas: ubsInfo?.numero_microareas ?? '',
@@ -499,7 +790,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
     };
 
     useEffect(() => {
-        if (id && debouncedGeneralData && !loading && debouncedGeneralData.isDirty) {
+        if (id && debouncedGeneralData && debouncedGeneralData.isDirty) {
             const updateData = async () => {
                 setSaveStatus('Salvando...');
                 try {
@@ -507,17 +798,56 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                     await axios.patch(`/api/ubs/${id}`, payload, { headers: { Authorization: `Bearer ${getToken()}` } });
                     setSaveStatus('Salvo');
                     setGeneralData(prev => ({...prev, isDirty: false}));
-                    if(onRefresh) onRefresh();
                 } catch (err) { setSaveStatus('Erro ao salvar'); }
             };
             updateData();
         }
-    }, [debouncedGeneralData, id, loading]);
+    }, [debouncedGeneralData, id]);
 
     const handleGeneralChange = (e) => {
         const { name, value, type, checked } = e.target;
         const val = type === 'checkbox' ? checked : value;
         setGeneralData(prev => ({ ...prev, [name]: val, isDirty: true }));
+    };
+
+    const handleSaveCronogramas = async () => {
+        if (!id) {
+            notify({ type: 'warning', message: 'Salve o rascunho antes de salvar os cronogramas.' });
+            return;
+        }
+        try {
+            const payload = {
+                cronograma_ubs_seg_manha: generalData?.cronograma_ubs_seg_manha || null,
+                cronograma_ubs_seg_tarde: generalData?.cronograma_ubs_seg_tarde || null,
+                cronograma_ubs_ter_manha: generalData?.cronograma_ubs_ter_manha || null,
+                cronograma_ubs_ter_tarde: generalData?.cronograma_ubs_ter_tarde || null,
+                cronograma_ubs_qua_manha: generalData?.cronograma_ubs_qua_manha || null,
+                cronograma_ubs_qua_tarde: generalData?.cronograma_ubs_qua_tarde || null,
+                cronograma_ubs_qui_manha: generalData?.cronograma_ubs_qui_manha || null,
+                cronograma_ubs_qui_tarde: generalData?.cronograma_ubs_qui_tarde || null,
+                cronograma_ubs_sex_manha: generalData?.cronograma_ubs_sex_manha || null,
+                cronograma_ubs_sex_tarde: generalData?.cronograma_ubs_sex_tarde || null,
+                cronograma_ubs_observacoes: generalData?.cronograma_ubs_observacoes || null,
+                cronograma_residentes_seg_manha: generalData?.cronograma_residentes_seg_manha || null,
+                cronograma_residentes_seg_tarde: generalData?.cronograma_residentes_seg_tarde || null,
+                cronograma_residentes_ter_manha: generalData?.cronograma_residentes_ter_manha || null,
+                cronograma_residentes_ter_tarde: generalData?.cronograma_residentes_ter_tarde || null,
+                cronograma_residentes_qua_manha: generalData?.cronograma_residentes_qua_manha || null,
+                cronograma_residentes_qua_tarde: generalData?.cronograma_residentes_qua_tarde || null,
+                cronograma_residentes_qui_manha: generalData?.cronograma_residentes_qui_manha || null,
+                cronograma_residentes_qui_tarde: generalData?.cronograma_residentes_qui_tarde || null,
+                cronograma_residentes_sex_manha: generalData?.cronograma_residentes_sex_manha || null,
+                cronograma_residentes_sex_tarde: generalData?.cronograma_residentes_sex_tarde || null,
+                cronograma_residentes_observacoes: generalData?.cronograma_residentes_observacoes || null,
+            };
+            await axios.patch(`/api/ubs/${id}`, payload, { headers: { Authorization: `Bearer ${getToken()}` } });
+            notify({ type: 'success', message: 'Cronogramas salvos com sucesso.' });
+            setGeneralData(prev => ({ ...prev, isDirty: false }));
+            setSaveStatus('Salvo');
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            notify({ type: 'error', message: 'Erro ao salvar cronogramas.' });
+        }
     };
 
     const handleCreateDraft = async () => {
@@ -628,6 +958,13 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                     <SectionCard title="Fluxo, agenda e acesso">
                         <TextAreaField label="Fluxo, agenda e acesso" name="fluxo_agenda_acesso" value={generalData?.fluxo_agenda_acesso} onChange={handleGeneralChange} placeholder="Descreva como funciona o acolhimento, o agendamento, a demanda espontânea, os gargalos e o acesso a exames/encaminhamentos, entre outros." />
                     </SectionCard>
+
+                    <CronogramasSection
+                        ubsId={id}
+                        data={generalData}
+                        onFieldChange={handleGeneralChange}
+                        onSave={handleSaveCronogramas}
+                    />
 
                     <SectionCard title="Informações gerais da UBS">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
