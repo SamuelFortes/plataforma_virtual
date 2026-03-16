@@ -705,7 +705,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
 
     useEffect(() => {
         if (!isOpen) return;
-        const nextId = reportId || ubsInfo?.id || null;
+        const nextId = reportId || null;
         setId(nextId);
         setReportData(null);
         setSaveStatus('');
@@ -1160,7 +1160,7 @@ const RelatoriosSituacionais = () => {
         onClose={() => setModalOpen(false)}
         reportId={selectedReportId}
         onRefresh={fetchRelatorios}
-                                ubsInfo={selectedReport}
+                                                                ubsInfo={selectedReportId ? selectedReport : (reports[0] || null)}
       />
 
                         <div className="page-panel p-6 rise-fade">
@@ -1169,7 +1169,7 @@ const RelatoriosSituacionais = () => {
                         <h1 className="page-title">Relatórios Situacionais</h1>
                         <p className="page-subtitle">Gerencie os diagnósticos das Unidades Básicas de Saúde</p>
           </div>
-                    {!isUserRole && reports.length === 0 && (
+                    {!isUserRole && (
                                                                                                 <button onClick={() => { setSelectedReportId(null); setModalOpen(true); }} className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
                             <PlusIcon className="w-5 h-5" />
                             Criar relatório
