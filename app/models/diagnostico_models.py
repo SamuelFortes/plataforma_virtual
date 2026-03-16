@@ -54,6 +54,31 @@ class UBS(Base):
     responsavel_contato = Column(String(255), nullable=True)
     fluxo_agenda_acesso = Column(Text, nullable=True)
 
+    # Cronogramas semanais persistentes para reuso no relatório situacional.
+    cronograma_ubs_seg_manha = Column(Text, nullable=True)
+    cronograma_ubs_seg_tarde = Column(Text, nullable=True)
+    cronograma_ubs_ter_manha = Column(Text, nullable=True)
+    cronograma_ubs_ter_tarde = Column(Text, nullable=True)
+    cronograma_ubs_qua_manha = Column(Text, nullable=True)
+    cronograma_ubs_qua_tarde = Column(Text, nullable=True)
+    cronograma_ubs_qui_manha = Column(Text, nullable=True)
+    cronograma_ubs_qui_tarde = Column(Text, nullable=True)
+    cronograma_ubs_sex_manha = Column(Text, nullable=True)
+    cronograma_ubs_sex_tarde = Column(Text, nullable=True)
+    cronograma_ubs_observacoes = Column(Text, nullable=True)
+
+    cronograma_residentes_seg_manha = Column(Text, nullable=True)
+    cronograma_residentes_seg_tarde = Column(Text, nullable=True)
+    cronograma_residentes_ter_manha = Column(Text, nullable=True)
+    cronograma_residentes_ter_tarde = Column(Text, nullable=True)
+    cronograma_residentes_qua_manha = Column(Text, nullable=True)
+    cronograma_residentes_qua_tarde = Column(Text, nullable=True)
+    cronograma_residentes_qui_manha = Column(Text, nullable=True)
+    cronograma_residentes_qui_tarde = Column(Text, nullable=True)
+    cronograma_residentes_sex_manha = Column(Text, nullable=True)
+    cronograma_residentes_sex_tarde = Column(Text, nullable=True)
+    cronograma_residentes_observacoes = Column(Text, nullable=True)
+
     status = Column(String(20), nullable=False, default="DRAFT")
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     submitted_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
@@ -73,33 +98,9 @@ class UBS(Base):
     )
     needs = relationship("UBSNeeds", back_populates="ubs", uselist=False, cascade="all, delete-orphan")
 
-    attachments = relationship(
-        "UBSAttachment", back_populates="ubs", cascade="all, delete-orphan"
-    )
-
     problems = relationship(
         "UBSProblem", back_populates="ubs", cascade="all, delete-orphan"
     )
-
-
-class UBSAttachment(Base):
-    __tablename__ = "ubs_attachments"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    ubs_id = Column(Integer, ForeignKey("ubs.id", ondelete="CASCADE"), nullable=False)
-
-    original_filename = Column(String(255), nullable=False)
-    content_type = Column(String(100), nullable=True)
-    size_bytes = Column(Integer, nullable=False, default=0)
-    storage_path = Column(Text, nullable=False)
-
-    # Indica em qual seção do PDF este anexo deve aparecer
-    section = Column(String(50), nullable=True)
-    description = Column(Text, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    ubs = relationship("UBS", back_populates="attachments")
 
 
 class Service(Base):

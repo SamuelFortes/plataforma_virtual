@@ -166,115 +166,6 @@ const ProfessionalsSection = ({ ubsId, initialData, onUpdate }) => {
     );
 }
 
-const AttachmentsSection = ({ ubsId, initialData, onUpdate }) => {
-    const { notify, confirm } = useNotifications();
-    const [file, setFile] = useState(null);
-    const [description, setDescription] = useState('');
-    const [section, setSection] = useState('GERAL');
-    const [isUploading, setIsUploading] = useState(false);
-
-    const handleUpload = async (e) => {
-        e.preventDefault();
-        if (!file) {
-            notify({ type: 'warning', message: 'Selecione um arquivo.' });
-            return;
-        }
-        
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append('files', file);
-        formData.append('description', description);
-        formData.append('section', section);
-        
-        try {
-            await axios.post(`/api/ubs/${ubsId}/attachments`, formData, { 
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${localStorage.getItem('token')}` } 
-            });
-            setFile(null); setDescription('');
-            onUpdate(); 
-        } catch(err) {
-            notify({ type: 'error', message: 'Erro ao enviar anexo.' });
-        }
-        finally { setIsUploading(false); }
-    }
-
-    const handleDelete = async (attachmentId) => {
-        const confirmed = await confirm({
-            title: 'Remover anexo',
-            message: 'Deseja remover este anexo?',
-            confirmLabel: 'Remover',
-            cancelLabel: 'Cancelar',
-        });
-        if (!confirmed) return;
-        try {
-            await axios.delete(`/api/ubs/attachments/${attachmentId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            onUpdate();
-        } catch (err) {
-            notify({ type: 'error', message: 'Erro ao remover o anexo.' });
-        }
-    };
-
-    return (
-        <SectionCard title="Anexos">
-             <form onSubmit={handleUpload} className="p-4 border rounded-md bg-gray-50 mb-6 space-y-4">
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Arquivo</label>
-                    <input type="file" onChange={e => setFile(e.target.files[0])} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                </div>
-                <InputField label="Descrição" value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex.: Planta da UBS"/>
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Seção do Relatório</label>
-                    <select 
-                        value={section} 
-                        onChange={e => setSection(e.target.value)}
-                        className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    >
-                        <option value="GERAL">Geral / Identificação</option>
-                        <option value="PROBLEMAS">Problemas Identificados</option>
-                        <option value="TERRITORIO">Território</option>
-                        <option value="EQUIPAMENTOS">Equipamentos e Insumos</option>
-                        <option value="INFRAESTRUTURA">Infraestrutura</option>
-                    </select>
-                </div>
-                <button type="submit" disabled={isUploading} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-md shadow-sm disabled:opacity-50">
-                    {isUploading ? 'Enviando...' : '+ Adicionar Anexo'}
-                </button>
-             </form>
-             
-             <ul className="divide-y divide-gray-200">
-                 {initialData && initialData.map(att => (
-                     <li key={att.id} className="py-3 flex justify-between items-center">
-                         <div className="text-sm">
-                             <span className="font-medium text-gray-900">{att.original_filename}</span>
-                             <span className="text-gray-500 ml-2">({att.description || 'Sem descrição'}) - {att.section}</span>
-                         </div>
-                         <div className="flex items-center gap-3">
-                             <a 
-                                 href={`/api/ubs/attachments/${att.id}/download`} 
-                                 target="_blank" 
-                                 rel="noopener noreferrer"
-                                 className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                             >
-                                 Baixar
-                             </a>
-                             <button
-                                 type="button"
-                                 onClick={() => handleDelete(att.id)}
-                                 className="text-red-600 hover:text-red-800 text-sm font-medium"
-                             >
-                                 Remover
-                             </button>
-                         </div>
-                     </li>
-                 ))}
-                 {(!initialData || initialData.length === 0) && <li className="text-center py-4 text-gray-500">Nenhum anexo.</li>}
-             </ul>
-        </SectionCard>
-    );
-}
-
 // --- Página Principal ---
 
 const DiagnosticoUBS = () => {
@@ -301,8 +192,7 @@ const DiagnosticoUBS = () => {
                 ...response.data.ubs,
                 professionals: response.data.professional_groups,
                 territory: response.data.territory_profile,
-                needs: response.data.needs,
-                attachments: response.data.attachments
+                needs: response.data.needs
             };
             setReportData(fullData);
             
@@ -475,7 +365,6 @@ const DiagnosticoUBS = () => {
                 <ProfessionalsSection ubsId={id} initialData={reportData.professionals} onUpdate={forceRefresh} />
                 <TerritorySection ubsId={id} initialData={reportData.territory} />
                 <NeedsSection ubsId={id} initialData={reportData.needs} />
-                <AttachmentsSection ubsId={id} initialData={reportData.attachments} onUpdate={forceRefresh} />
                 
             </div>
         </div>

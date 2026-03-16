@@ -120,6 +120,28 @@ create table public.ubs (
   responsavel_cargo character varying(255) null,
   responsavel_contato character varying(255) null,
   fluxo_agenda_acesso text null,
+  cronograma_ubs_seg_manha text null,
+  cronograma_ubs_seg_tarde text null,
+  cronograma_ubs_ter_manha text null,
+  cronograma_ubs_ter_tarde text null,
+  cronograma_ubs_qua_manha text null,
+  cronograma_ubs_qua_tarde text null,
+  cronograma_ubs_qui_manha text null,
+  cronograma_ubs_qui_tarde text null,
+  cronograma_ubs_sex_manha text null,
+  cronograma_ubs_sex_tarde text null,
+  cronograma_ubs_observacoes text null,
+  cronograma_residentes_seg_manha text null,
+  cronograma_residentes_seg_tarde text null,
+  cronograma_residentes_ter_manha text null,
+  cronograma_residentes_ter_tarde text null,
+  cronograma_residentes_qua_manha text null,
+  cronograma_residentes_qua_tarde text null,
+  cronograma_residentes_qui_manha text null,
+  cronograma_residentes_qui_tarde text null,
+  cronograma_residentes_sex_manha text null,
+  cronograma_residentes_sex_tarde text null,
+  cronograma_residentes_observacoes text null,
   status character varying(20) not null,
   submitted_at timestamp with time zone null,
   submitted_by integer null,
@@ -129,20 +151,6 @@ create table public.ubs (
   constraint ubs_pkey primary key (id),
   constraint ubs_owner_user_id_fkey foreign KEY (owner_user_id) references usuarios (id),
   constraint ubs_submitted_by_fkey foreign KEY (submitted_by) references usuarios (id)
-) TABLESPACE pg_default;
-
-create table public.ubs_attachments (
-  id serial not null,
-  ubs_id integer not null,
-  original_filename character varying(255) not null,
-  content_type character varying(100) null,
-  size_bytes integer not null,
-  storage_path text not null,
-  section character varying(50) null,
-  description text null,
-  created_at timestamp with time zone null default now(),
-  constraint ubs_attachments_pkey primary key (id),
-  constraint ubs_attachments_ubs_id_fkey foreign KEY (ubs_id) references ubs (id) on delete CASCADE
 ) TABLESPACE pg_default;
 
 create table public.ubs_needs (
@@ -769,4 +777,47 @@ ALTER TABLE public.agentes_saude
 ALTER TABLE public.agentes_saude
   ADD CONSTRAINT agentes_saude_microarea_id_fkey
   FOREIGN KEY (microarea_id) REFERENCES public.microareas(id) ON DELETE SET NULL;
+```
+
+### 2.13. Remover Tabela `ubs_attachments` (Relatório Situacional somente texto) - **NOVO**
+Com a remoção da funcionalidade de anexos/imagens do relatório situacional, execute a migração abaixo.
+
+```sql
+DROP TABLE IF EXISTS public.ubs_attachments;
+```
+
+### 2.14. Adicionar Campos de Cronograma Semanal no Relatório Situacional - **NOVO**
+Esses campos persistem os cronogramas da UBS e dos residentes para reaproveitamento automático em novos relatórios/PDFs.
+
+```sql
+ALTER TABLE public.ubs
+ADD COLUMN IF NOT EXISTS cronograma_ubs_seg_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_seg_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_ter_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_ter_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qua_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qua_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qui_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_qui_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_sex_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_ubs_sex_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_seg_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_seg_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_ter_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_ter_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qua_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qua_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qui_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_qui_tarde text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_sex_manha text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_sex_tarde text;
+```
+
+### 2.15. Adicionar Campos de Observações dos Cronogramas - **NOVO**
+Campos para observações livres abaixo dos blocos de cronograma da UBS e dos residentes.
+
+```sql
+ALTER TABLE public.ubs
+ADD COLUMN IF NOT EXISTS cronograma_ubs_observacoes text,
+ADD COLUMN IF NOT EXISTS cronograma_residentes_observacoes text;
 ```

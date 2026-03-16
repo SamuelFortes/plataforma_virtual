@@ -100,15 +100,13 @@ const Dashboard = () => {
   ];
 
   return (
-    <div className="container mx-auto p-8">
-      <div className="bg-white dark:bg-slate-900 shadow-md rounded-lg p-6 mb-6 rise-fade">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">Bem-vindo à Plataforma UBS</h1>
-            <p className="mt-2 text-gray-600 dark:text-slate-300">
-              Você está autenticado como <strong className="capitalize">{user?.cargo || user?.role?.toLowerCase() || 'Usuário'}</strong>.
-            </p>
-          </div>
+    <div className="page-shell">
+      <div className="page-panel mb-6 rise-fade">
+        <div className="page-panel-header">
+          <h1 className="page-title">Bem-vindo à Plataforma UBS</h1>
+          <p className="page-subtitle">
+            Você está autenticado como <strong className="capitalize text-gray-900 dark:text-white">{user?.cargo || user?.role?.toLowerCase() || 'Usuário'}</strong>.
+          </p>
         </div>
       </div>
 

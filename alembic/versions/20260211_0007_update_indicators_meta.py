@@ -17,23 +17,36 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Idempotent: safe to run even if changes were already applied manually
-    op.execute("""
-        ALTER TABLE indicators
-        ADD COLUMN IF NOT EXISTS meta NUMERIC(18, 4),
-        ADD COLUMN IF NOT EXISTS tipo_valor VARCHAR(40) DEFAULT 'PERCENTUAL';
-    """)
-    op.execute("ALTER TABLE indicators DROP COLUMN IF EXISTS tipo_dado;")
-    op.execute("ALTER TABLE indicators DROP COLUMN IF EXISTS grau_precisao_valor;")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = {col["name"] for col in inspector.get_columns("indicators")}
+
+    with op.batch_alter_table("indicators") as batch_op:
+        if "meta" not in columns:
+            batch_op.add_column(sa.Column("meta", sa.Numeric(18, 4), nullable=True))
+        if "tipo_valor" not in columns:
+            batch_op.add_column(sa.Column("tipo_valor", sa.String(length=40), nullable=True, server_default="PERCENTUAL"))
+        if "tipo_dado" in columns:
+            batch_op.drop_column("tipo_dado")
+        if "grau_precisao_valor" in columns:
+            batch_op.drop_column("grau_precisao_valor")
 
 
 def downgrade() -> None:
-    op.execute("""
-        ALTER TABLE indicators
-        ADD COLUMN IF NOT EXISTS tipo_dado VARCHAR(40) NOT NULL DEFAULT 'TAXA_PERCENTUAL',
-        ADD COLUMN IF NOT EXISTS grau_precisao_valor VARCHAR(40) NOT NULL DEFAULT 'UNIDADE';
-    """)
-    op.execute("ALTER TABLE indicators DROP COLUMN IF EXISTS meta;")
-    op.execute("ALTER TABLE indicators DROP COLUMN IF EXISTS tipo_valor;")
-    op.execute("ALTER TABLE indicators ALTER COLUMN tipo_dado DROP DEFAULT;")
-    op.execute("ALTER TABLE indicators ALTER COLUMN grau_precisao_valor DROP DEFAULT;")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = {col["name"] for col in inspector.get_columns("indicators")}
+
+    with op.batch_alter_table("indicators") as batch_op:
+        if "tipo_dado" not in columns:
+            batch_op.add_column(
+                sa.Column("tipo_dado", sa.String(length=40), nullable=False, server_default="TAXA_PERCENTUAL")
+            )
+        if "grau_precisao_valor" not in columns:
+            batch_op.add_column(
+                sa.Column("grau_precisao_valor", sa.String(length=40), nullable=False, server_default="UNIDADE")
+            )
+        if "meta" in columns:
+            batch_op.drop_column("meta")
+        if "tipo_valor" in columns:
+            batch_op.drop_column("tipo_valor")

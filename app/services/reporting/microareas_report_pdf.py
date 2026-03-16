@@ -8,6 +8,12 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+PRIMARY = colors.HexColor("#0F172A")
+ACCENT = colors.HexColor("#0E7490")
+MUTED_BG = colors.HexColor("#F1F5F9")
+ALT_ROW_BG = colors.HexColor("#F8FAFC")
+GRID = colors.HexColor("#94A3B8")
+
 
 def _safe_filename(value: str, default: str = "relatorio_microareas") -> str:
     base = value.strip() if value else default
@@ -94,11 +100,11 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E2E8F0")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), PRIMARY),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5F5")),
+                ("GRID", (0, 0), (-1, -1), 0.4, GRID),
             ]
         )
     )
@@ -134,12 +140,12 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
     prioridade_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5F5")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.4, GRID),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ALT_ROW_BG]),
             ]
         )
     )
@@ -171,8 +177,8 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
         sugestoes_table.setStyle(
             TableStyle(
                 [
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F1F5F9")),
-                    ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#CBD5F5")),
+                    ("BACKGROUND", (0, 0), (-1, -1), MUTED_BG),
+                    ("GRID", (0, 0), (-1, -1), 0.3, GRID),
                     ("LEFTPADDING", (0, 0), (-1, -1), 6),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 6),
                     ("TOPPADDING", (0, 0), (-1, -1), 6),
@@ -199,12 +205,12 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
     checklist_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5F5")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.4, GRID),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ALT_ROW_BG]),
             ]
         )
     )
@@ -241,14 +247,14 @@ def generate_microareas_report_pdf(ubs, microareas, agentes_por_microarea, emitt
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 0), 9),
                 ("ALIGN", (2, 1), (3, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5F5")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.4, GRID),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, ALT_ROW_BG]),
             ]
         )
     )

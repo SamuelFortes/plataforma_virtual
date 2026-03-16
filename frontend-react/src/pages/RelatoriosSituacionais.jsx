@@ -13,7 +13,7 @@ import {
 // --- COMPONENTES VISUAIS ---
 
 const SectionCard = ({ title, subtitle, children, disabled, lockedMessage }) => (
-    <div className={`bg-white dark:bg-slate-900 shadow-md rounded-lg mb-8 transition-opacity duration-300 ${disabled ? 'opacity-60 relative' : ''}`}>
+    <div className={`page-panel mb-8 transition-opacity duration-300 ${disabled ? 'opacity-60 relative' : ''}`}>
         {disabled && lockedMessage && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100 dark:bg-slate-800 bg-opacity-50 rounded-lg">
                 <div className="bg-white dark:bg-slate-900 p-3 rounded shadow border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium text-sm text-center">
@@ -21,7 +21,7 @@ const SectionCard = ({ title, subtitle, children, disabled, lockedMessage }) => 
                 </div>
             </div>
         )}
-        <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 rounded-t-lg">
+        <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 rounded-t-2xl">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{title}</h3>
             {subtitle && <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{subtitle}</p>}
         </div>
@@ -43,7 +43,7 @@ const InputField = ({ label, name, value, onChange, type = 'text', helpText, pla
             value={value || ''}
             onChange={onChange}
             placeholder={placeholder}
-            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:text-white dark:placeholder-slate-500"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-cyan-600 focus:border-cyan-600 sm:text-sm dark:text-white dark:placeholder-slate-500"
             {...props}
         />
         {helpText && <p className="mt-2 text-xs text-gray-500 dark:text-slate-400 italic">{helpText}</p>}
@@ -62,7 +62,7 @@ const TextAreaField = ({ label, name, value, onChange, helpText, placeholder, ..
             onChange={onChange}
             placeholder={placeholder}
             rows={props.rows || 4}
-            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:text-white dark:placeholder-slate-500"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-cyan-600 focus:border-cyan-600 sm:text-sm dark:text-white dark:placeholder-slate-500"
             {...props}
         />
         {helpText && <p className="mt-2 text-xs text-gray-500 dark:text-slate-400 italic">{helpText}</p>}
@@ -302,7 +302,7 @@ const IndicatorsSection = ({ ubsId, initialData, onUpdate }) => {
                     <TextAreaField label="Observações (opcional)" name="observacoes" rows={2} value={formData.observacoes} onChange={e => setFormData(p => ({...p, observacoes: e.target.value}))} placeholder="Fonte dos dados, critérios, etc."/>
                     <div className="flex justify-end gap-2 mt-2">
                         <button type="button" onClick={() => setFormData({ nome_indicador: '', valor: '', meta: '', tipo_valor: 'PERCENTUAL', periodo_quadrimestre: '', periodo_ano: '', observacoes: '' })} className="text-sm font-medium text-gray-600 dark:text-slate-400 hover:underline">Limpar</button>
-                        <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 transition-colors">Salvar indicador</button>
+                        <button type="submit" className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800 transition-colors">Salvar indicador</button>
                     </div>
                 </form>
             </div>
@@ -399,7 +399,7 @@ const ProfessionalsSection = ({ ubsId, initialData, onUpdate }) => {
                     </div>
                     <div className="md:col-span-3 flex justify-end gap-2">
                         <button type="button" onClick={() => setFormData({ cargo_funcao: '', quantidade: '', tipo_vinculo: '', observacoes: '' })} className="text-sm font-medium text-gray-600 dark:text-slate-400 hover:underline">Limpar</button>
-                        <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700 transition-colors">Salvar profissional</button>
+                        <button type="submit" className="bg-cyan-700 text-white px-4 py-2 rounded font-bold hover:bg-cyan-800 transition-colors">Salvar profissional</button>
                     </div>
                 </form>
             </div>
@@ -407,96 +407,271 @@ const ProfessionalsSection = ({ ubsId, initialData, onUpdate }) => {
     );
 }
 
-const AttachmentsSection = ({ ubsId, initialData, onUpdate }) => {
-    const { notify, confirm } = useNotifications();
-    const [file, setFile] = useState(null);
-    const [description, setDescription] = useState('');
-    const [section, setSection] = useState('PROBLEMAS');
-    const [isUploading, setIsUploading] = useState(false);
+const CronogramasSection = ({ ubsId, data, onFieldChange, onSave }) => {
+    const [entryDrafts, setEntryDrafts] = useState({});
+    const [entryTimes, setEntryTimes] = useState({});
+    const [editorTarget, setEditorTarget] = useState(null);
+    const days = [
+        { key: 'seg', label: 'SEG' },
+        { key: 'ter', label: 'TER' },
+        { key: 'qua', label: 'QUA' },
+        { key: 'qui', label: 'QUI' },
+        { key: 'sex', label: 'SEX' },
+    ];
 
-    const handleUpload = async (e) => {
-        e.preventDefault();
-        if (!file) {
-            notify({ type: 'warning', message: 'Selecione um arquivo.' });
-            return;
-        }
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append('files', file);
-        formData.append('description', description);
-        formData.append('section', section);
-        try {
-            await axios.post(`/api/ubs/${ubsId}/attachments`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setFile(null); setDescription(''); onUpdate(); 
-        } catch(err) {
-            notify({ type: 'error', message: 'Erro ao enviar anexo.' });
-        }
-        finally { setIsUploading(false); }
-    }
+    useEffect(() => {
+        if (!editorTarget) return;
+        const onEsc = (e) => {
+            if (e.key === 'Escape') setEditorTarget(null);
+        };
+        window.addEventListener('keydown', onEsc);
+        return () => window.removeEventListener('keydown', onEsc);
+    }, [editorTarget]);
 
-    const handleDelete = async (attachmentId) => {
-        const confirmed = await confirm({
-            title: 'Remover anexo',
-            message: 'Deseja remover este anexo?',
-            confirmLabel: 'Remover',
-            cancelLabel: 'Cancelar',
-        });
-        if (!confirmed) return;
-        try {
-            await axios.delete(`/api/ubs/attachments/${attachmentId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            onUpdate();
-        } catch (err) {
-            notify({ type: 'error', message: 'Erro ao remover o anexo.' });
+    const parseItems = (value) =>
+        String(value || '')
+            .split('\n')
+            .map((item) => item.trim())
+            .filter(Boolean);
+
+    const updateField = (name, value) => {
+        onFieldChange({ target: { name, value, type: 'text' } });
+    };
+
+    const addItem = (fieldName, withTime = false) => {
+        const draft = (entryDrafts[fieldName] || '').trim();
+        if (!draft) return;
+        const time = (entryTimes[fieldName] || '').trim();
+        const itemText = withTime && time ? `[${time}] ${draft}` : draft;
+        const items = parseItems(data?.[fieldName]);
+        items.push(itemText);
+        updateField(fieldName, items.join('\n'));
+        setEntryDrafts((prev) => ({ ...prev, [fieldName]: '' }));
+        if (withTime) {
+            setEntryTimes((prev) => ({ ...prev, [fieldName]: '' }));
         }
     };
 
-    return (
-        <SectionCard title="Anexos" subtitle="Envie fotos e arquivos relacionados (ex.: registros fotográficos)." disabled={!ubsId} lockedMessage="Salve o rascunho para habilitar os anexos.">
-             <form onSubmit={handleUpload} className="p-4 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-800 mb-6 space-y-4">
-                <input type="file" onChange={e => setFile(e.target.files[0])} className="block w-full text-sm text-gray-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-400"/>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Seção do PDF</label>
-                        <select value={section} onChange={e => setSection(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 dark:text-white border border-gray-300 dark:border-slate-600 rounded-md text-sm">
-                            <option value="PROBLEMAS">Problemas identificados</option>
-                            <option value="NEC_EQUIP_INSUMOS">Necessidades (equipamentos e insumos)</option>
-                            <option value="NEC_INFRA">Necessidades (infraestrutura e manutenção)</option>
-                            <option value="NEC_ACS">Necessidades (ACS)</option>
-                            <option value="TERRITORIO">Território</option>
-                            <option value="POTENCIALIDADES">Potencialidades</option>
-                            <option value="RISCOS">Riscos e vulnerabilidades</option>
-                            <option value="GERAL">Identificação</option>
-                        </select>
-                    </div>
-                    <InputField label="Legenda/descrição (opcional)" value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex.: Foto da janela quebrada"/>
-                </div>
-                <button type="submit" disabled={isUploading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {isUploading ? 'Enviando...' : 'Enviar anexos'}
-                </button>
-             </form>
-             <h4 className="font-bold text-gray-700 dark:text-slate-300 mb-2">Anexos enviados</h4>
-             <ul className="divide-y divide-gray-200 dark:divide-slate-700">
-                 {initialData && initialData.map(att => (
-                     <li key={att.id} className="py-3 flex justify-between items-center text-sm">
-                         <span>{att.original_filename} <span className="text-gray-500 dark:text-slate-400">({att.description || att.section})</span></span>
-                         <div className="flex gap-3">
-                            <a href={`/api/ubs/attachments/${att.id}/download`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Baixar</a>
+    const removeItem = (fieldName, index) => {
+        const items = parseItems(data?.[fieldName]);
+        const next = items.filter((_, idx) => idx !== index);
+        updateField(fieldName, next.join('\n'));
+    };
+
+    const countActivities = (prefix) => {
+        let total = 0;
+        days.forEach((day) => {
+            total += parseItems(data?.[`${prefix}_${day.key}_manha`]).length;
+            total += parseItems(data?.[`${prefix}_${day.key}_tarde`]).length;
+        });
+        return total;
+    };
+
+    const scheduleBlock = (fieldName, colorClasses, label, withTime = false) => {
+        const items = parseItems(data?.[fieldName]);
+        return (
+            <div className={`rounded-lg border p-3 ${colorClasses}`}>
+                <label className="block text-sm font-semibold mb-2">{label}</label>
+                <div className="space-y-2">
+                    {withTime && (
+                        <div>
+                            <label className="block text-xs mb-1 text-slate-600 dark:text-slate-300">Horário (opcional)</label>
+                            <input
+                                type="text"
+                                value={entryTimes[fieldName] || ''}
+                                onChange={(e) => setEntryTimes((prev) => ({ ...prev, [fieldName]: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-600 rounded-md dark:text-white"
+                                placeholder="Ex.: 08:30 ou 14:00-15:30"
+                            />
+                        </div>
+                    )}
+                    <div>
+                        <label className="block text-xs mb-1 text-slate-600 dark:text-slate-300">Atividade</label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={entryDrafts[fieldName] || ''}
+                                onChange={(e) => setEntryDrafts((prev) => ({ ...prev, [fieldName]: e.target.value }))}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        addItem(fieldName, withTime);
+                                    }
+                                }}
+                                className="w-full min-w-0 px-3 py-2 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-600 rounded-md dark:text-white"
+                                placeholder="Digite atividade e pressione Enter"
+                            />
                             <button
                                 type="button"
-                                onClick={() => handleDelete(att.id)}
-                                className="text-red-600 hover:underline"
+                                onClick={() => addItem(fieldName, withTime)}
+                                className="px-3 py-2 rounded-md bg-slate-700 text-white text-sm font-semibold hover:bg-slate-800"
                             >
-                                Remover
+                                +
                             </button>
-                         </div>
-                     </li>
-                 ))}
-                 {(!initialData || initialData.length === 0) && <li className="text-center py-4 text-gray-500 dark:text-slate-400 italic">Nenhum anexo enviado.</li>}
-             </ul>
+                        </div>
+                    </div>
+                </div>
+                <ul className="list-disc pl-5 mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300 max-h-40 overflow-y-auto pr-1">
+                    {items.map((item, idx) => (
+                        <li key={`${fieldName}-${idx}`} className="flex items-start gap-2 min-w-0">
+                            <span className="min-w-0 flex-1 break-words leading-snug">{item}</span>
+                            <button
+                                type="button"
+                                onClick={() => removeItem(fieldName, idx)}
+                                className="text-red-500 hover:text-red-700 text-xs font-semibold shrink-0"
+                            >
+                                remover
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        );
+    };
+
+    const renderGrid = (title, prefix, fullScreen = false) => (
+        <div className={`rounded-2xl border border-gray-200 dark:border-slate-700 bg-gradient-to-b from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 p-4 mb-6 shadow-sm ${fullScreen ? 'min-h-[60vh]' : ''}`}>
+            <div className="flex items-center justify-between px-2 pb-3 border-b border-gray-200 dark:border-slate-700">
+                <h4 className="font-bold text-emerald-800 dark:text-emerald-300">{title}</h4>
+                <span className="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    SEG a SEX
+                </span>
+            </div>
+            <div className={`grid grid-cols-1 ${fullScreen ? 'md:grid-cols-2 2xl:grid-cols-3' : 'md:grid-cols-2 xl:grid-cols-5'} gap-3 mt-4`}>
+                {days.map((day) => (
+                    <div key={day.key} className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                        <div className="px-3 py-2 text-center text-xs font-semibold tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {day.label} 
+                        </div>
+                        <div className="p-3 space-y-2">
+                            {scheduleBlock(
+                                `${prefix}_${day.key}_manha`,
+                                'border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300',
+                                'Manhã',
+                                prefix === 'cronograma_residentes'
+                            )}
+                            {scheduleBlock(
+                                `${prefix}_${day.key}_tarde`,
+                                'border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300',
+                                'Tarde',
+                                prefix === 'cronograma_residentes'
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {prefix === 'cronograma_residentes' && (
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    Dica: preencha o campo de horario (opcional) para cada atividade, ex.: 08:30 ou 14:00-15:30.
+                </p>
+            )}
+            <div className="mt-4">
+                <TextAreaField
+                    label="Observações do cronograma"
+                    name={`${prefix}_observacoes`}
+                    value={data?.[`${prefix}_observacoes`] || ''}
+                    onChange={onFieldChange}
+                    rows={3}
+                    placeholder="Ex.: ressalvas, mudanças quinzenais, atividades extras e orientações gerais."
+                />
+            </div>
+        </div>
+    );
+
+    return (
+        <SectionCard
+            title="Cronogramas para o Relatório"
+            subtitle="Use o editor expandido para visualizar e personalizar o cronograma com mais espaço."
+            disabled={!ubsId}
+            lockedMessage="Salve o rascunho para habilitar esta seção"
+        >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-900/20 p-4">
+                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-300">Cronograma da UBS</h4>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+                        {countActivities('cronograma_ubs')} atividades cadastradas
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setEditorTarget('cronograma_ubs')}
+                        className="mt-3 px-4 py-2 rounded-md bg-cyan-700 text-white text-sm font-semibold hover:bg-cyan-800"
+                    >
+                        Personalizar cronograma
+                    </button>
+                </div>
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20 p-4">
+                    <h4 className="font-semibold text-blue-800 dark:text-blue-300">Cronograma dos Residentes</h4>
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                        {countActivities('cronograma_residentes')} atividades cadastradas
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setEditorTarget('cronograma_residentes')}
+                        className="mt-3 px-4 py-2 rounded-md bg-cyan-700 text-white text-sm font-semibold hover:bg-cyan-800"
+                    >
+                        Personalizar cronograma
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex justify-end">
+                <button
+                    type="button"
+                    onClick={onSave}
+                    className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800"
+                >
+                    Salvar cronogramas (reutilizável)
+                </button>
+            </div>
+
+            {editorTarget && (
+                <div className="fixed inset-0 z-[70] bg-black/55 flex items-center justify-center p-4">
+                    <div className="w-full max-w-[1400px] max-h-[92vh] overflow-hidden rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col">
+                        <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                                    {editorTarget === 'cronograma_ubs' ? 'Editor: Cronograma da UBS' : 'Editor: Cronograma dos Residentes'}
+                                </h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Mais espaço para montar atividades por dia e turno.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setEditorTarget(null)}
+                                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white text-2xl leading-none"
+                                aria-label="Fechar editor"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="p-5 overflow-y-auto">
+                            {editorTarget === 'cronograma_ubs'
+                                ? renderGrid('Cronograma da UBS', 'cronograma_ubs', true)
+                                : renderGrid('Cronograma dos Residentes', 'cronograma_residentes', true)}
+                        </div>
+
+                        <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setEditorTarget(null)}
+                                className="px-4 py-2 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
+                            >
+                                Voltar ao formulário
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    await onSave();
+                                    setEditorTarget(null);
+                                }}
+                                className="px-4 py-2 rounded-md bg-cyan-700 text-white font-semibold hover:bg-cyan-800"
+                            >
+                                Salvar e fechar editor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </SectionCard>
     );
 }
@@ -551,6 +726,28 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
             fluxo_agenda_acesso: '',
             descritivos_gerais: '',
             observacoes_gerais: '',
+            cronograma_ubs_seg_manha: ubsInfo?.cronograma_ubs_seg_manha || '',
+            cronograma_ubs_seg_tarde: ubsInfo?.cronograma_ubs_seg_tarde || '',
+            cronograma_ubs_ter_manha: ubsInfo?.cronograma_ubs_ter_manha || '',
+            cronograma_ubs_ter_tarde: ubsInfo?.cronograma_ubs_ter_tarde || '',
+            cronograma_ubs_qua_manha: ubsInfo?.cronograma_ubs_qua_manha || '',
+            cronograma_ubs_qua_tarde: ubsInfo?.cronograma_ubs_qua_tarde || '',
+            cronograma_ubs_qui_manha: ubsInfo?.cronograma_ubs_qui_manha || '',
+            cronograma_ubs_qui_tarde: ubsInfo?.cronograma_ubs_qui_tarde || '',
+            cronograma_ubs_sex_manha: ubsInfo?.cronograma_ubs_sex_manha || '',
+            cronograma_ubs_sex_tarde: ubsInfo?.cronograma_ubs_sex_tarde || '',
+            cronograma_ubs_observacoes: ubsInfo?.cronograma_ubs_observacoes || '',
+            cronograma_residentes_seg_manha: ubsInfo?.cronograma_residentes_seg_manha || '',
+            cronograma_residentes_seg_tarde: ubsInfo?.cronograma_residentes_seg_tarde || '',
+            cronograma_residentes_ter_manha: ubsInfo?.cronograma_residentes_ter_manha || '',
+            cronograma_residentes_ter_tarde: ubsInfo?.cronograma_residentes_ter_tarde || '',
+            cronograma_residentes_qua_manha: ubsInfo?.cronograma_residentes_qua_manha || '',
+            cronograma_residentes_qua_tarde: ubsInfo?.cronograma_residentes_qua_tarde || '',
+            cronograma_residentes_qui_manha: ubsInfo?.cronograma_residentes_qui_manha || '',
+            cronograma_residentes_qui_tarde: ubsInfo?.cronograma_residentes_qui_tarde || '',
+            cronograma_residentes_sex_manha: ubsInfo?.cronograma_residentes_sex_manha || '',
+            cronograma_residentes_sex_tarde: ubsInfo?.cronograma_residentes_sex_tarde || '',
+            cronograma_residentes_observacoes: ubsInfo?.cronograma_residentes_observacoes || '',
             numero_habitantes_ativos: ubsInfo?.numero_habitantes_ativos ?? '',
             numero_familias_cadastradas: ubsInfo?.numero_familias_cadastradas ?? '',
             numero_microareas: ubsInfo?.numero_microareas ?? '',
@@ -574,7 +771,6 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                 professionals: response.data.professional_groups, 
                 territory: response.data.territory_profile, 
                 needs: response.data.needs, 
-                attachments: response.data.attachments,
                 indicators: response.data.indicators_latest
             };
             setReportData(full);
@@ -584,7 +780,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
     };
 
     const preparePayload = (data) => {
-        const { isDirty, id, created_at, updated_at, status, owner_user_id, tenant_id, submitted_at, professionals, territory, needs, attachments, indicators, ...cleaned } = data;
+        const { isDirty, id, created_at, updated_at, status, owner_user_id, tenant_id, submitted_at, professionals, territory, needs, indicators, ...cleaned } = data;
         const numericFields = ['numero_habitantes_ativos', 'numero_familias_cadastradas', 'numero_microareas', 'numero_domicilios', 'domicilios_rurais'];
         Object.keys(cleaned).forEach(key => {
             if (cleaned[key] === "") cleaned[key] = numericFields.includes(key) ? 0 : null;
@@ -594,7 +790,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
     };
 
     useEffect(() => {
-        if (id && debouncedGeneralData && !loading && debouncedGeneralData.isDirty) {
+        if (id && debouncedGeneralData && debouncedGeneralData.isDirty) {
             const updateData = async () => {
                 setSaveStatus('Salvando...');
                 try {
@@ -602,17 +798,56 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                     await axios.patch(`/api/ubs/${id}`, payload, { headers: { Authorization: `Bearer ${getToken()}` } });
                     setSaveStatus('Salvo');
                     setGeneralData(prev => ({...prev, isDirty: false}));
-                    if(onRefresh) onRefresh();
                 } catch (err) { setSaveStatus('Erro ao salvar'); }
             };
             updateData();
         }
-    }, [debouncedGeneralData, id, loading]);
+    }, [debouncedGeneralData, id]);
 
     const handleGeneralChange = (e) => {
         const { name, value, type, checked } = e.target;
         const val = type === 'checkbox' ? checked : value;
         setGeneralData(prev => ({ ...prev, [name]: val, isDirty: true }));
+    };
+
+    const handleSaveCronogramas = async () => {
+        if (!id) {
+            notify({ type: 'warning', message: 'Salve o rascunho antes de salvar os cronogramas.' });
+            return;
+        }
+        try {
+            const payload = {
+                cronograma_ubs_seg_manha: generalData?.cronograma_ubs_seg_manha || null,
+                cronograma_ubs_seg_tarde: generalData?.cronograma_ubs_seg_tarde || null,
+                cronograma_ubs_ter_manha: generalData?.cronograma_ubs_ter_manha || null,
+                cronograma_ubs_ter_tarde: generalData?.cronograma_ubs_ter_tarde || null,
+                cronograma_ubs_qua_manha: generalData?.cronograma_ubs_qua_manha || null,
+                cronograma_ubs_qua_tarde: generalData?.cronograma_ubs_qua_tarde || null,
+                cronograma_ubs_qui_manha: generalData?.cronograma_ubs_qui_manha || null,
+                cronograma_ubs_qui_tarde: generalData?.cronograma_ubs_qui_tarde || null,
+                cronograma_ubs_sex_manha: generalData?.cronograma_ubs_sex_manha || null,
+                cronograma_ubs_sex_tarde: generalData?.cronograma_ubs_sex_tarde || null,
+                cronograma_ubs_observacoes: generalData?.cronograma_ubs_observacoes || null,
+                cronograma_residentes_seg_manha: generalData?.cronograma_residentes_seg_manha || null,
+                cronograma_residentes_seg_tarde: generalData?.cronograma_residentes_seg_tarde || null,
+                cronograma_residentes_ter_manha: generalData?.cronograma_residentes_ter_manha || null,
+                cronograma_residentes_ter_tarde: generalData?.cronograma_residentes_ter_tarde || null,
+                cronograma_residentes_qua_manha: generalData?.cronograma_residentes_qua_manha || null,
+                cronograma_residentes_qua_tarde: generalData?.cronograma_residentes_qua_tarde || null,
+                cronograma_residentes_qui_manha: generalData?.cronograma_residentes_qui_manha || null,
+                cronograma_residentes_qui_tarde: generalData?.cronograma_residentes_qui_tarde || null,
+                cronograma_residentes_sex_manha: generalData?.cronograma_residentes_sex_manha || null,
+                cronograma_residentes_sex_tarde: generalData?.cronograma_residentes_sex_tarde || null,
+                cronograma_residentes_observacoes: generalData?.cronograma_residentes_observacoes || null,
+            };
+            await axios.patch(`/api/ubs/${id}`, payload, { headers: { Authorization: `Bearer ${getToken()}` } });
+            notify({ type: 'success', message: 'Cronogramas salvos com sucesso.' });
+            setGeneralData(prev => ({ ...prev, isDirty: false }));
+            setSaveStatus('Salvo');
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            notify({ type: 'error', message: 'Erro ao salvar cronogramas.' });
+        }
     };
 
     const handleCreateDraft = async () => {
@@ -724,7 +959,12 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                         <TextAreaField label="Fluxo, agenda e acesso" name="fluxo_agenda_acesso" value={generalData?.fluxo_agenda_acesso} onChange={handleGeneralChange} placeholder="Descreva como funciona o acolhimento, o agendamento, a demanda espontânea, os gargalos e o acesso a exames/encaminhamentos, entre outros." />
                     </SectionCard>
 
-                    <AttachmentsSection ubsId={id} initialData={reportData?.attachments} onUpdate={() => fetchFullData(id)} />
+                    <CronogramasSection
+                        ubsId={id}
+                        data={generalData}
+                        onFieldChange={handleGeneralChange}
+                        onSave={handleSaveCronogramas}
+                    />
 
                     <SectionCard title="Informações gerais da UBS">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -785,7 +1025,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                                 placeholder="Informe situações de vulnerabilidade: alagamentos, violência, descarte irregular de lixo, entre outras." 
                             />
                             <div className="flex justify-end">
-                                <button onClick={() => handleSectionPut('territory', reportData?.territory || { descricao_territorio: '', potencialidades_territorio: '', riscos_vulnerabilidades: '' })} className="bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-700">Salvar seção</button>
+                                <button onClick={() => handleSectionPut('territory', reportData?.territory || { descricao_territorio: '', potencialidades_territorio: '', riscos_vulnerabilidades: '' })} className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800">Salvar seção</button>
                             </div>
                         </div>
                     </SectionCard>
@@ -817,7 +1057,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                                 placeholder="Reforma de telhado, substituição de portas, acessibilidade, adequação elétrica e pintura." 
                             />
                             <div className="flex justify-end">
-                                <button onClick={() => handleSectionPut('needs', reportData?.needs || { problemas_identificados: '', necessidades_equipamentos_insumos: '', necessidades_especificas_acs: '', necessidades_infraestrutura_manutencao: '' })} className="bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-700">Salvar seção</button>
+                                <button onClick={() => handleSectionPut('needs', reportData?.needs || { problemas_identificados: '', necessidades_equipamentos_insumos: '', necessidades_especificas_acs: '', necessidades_infraestrutura_manutencao: '' })} className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800">Salvar seção</button>
                             </div>
                         </div>
                     </SectionCard>
@@ -826,7 +1066,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                         <div className="flex justify-center my-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <div className="text-center">
                                 <p className="mb-4 text-blue-800 dark:text-blue-300 font-medium">Preencha Nome da UBS, CNES e Área de atuação acima e clique abaixo para desbloquear as demais seções.</p>
-                                <button onClick={handleCreateDraft} className="bg-blue-600 text-white px-10 py-4 rounded-lg font-bold text-xl shadow-lg hover:bg-blue-700 transition-all">Salvar rascunho</button>
+                                <button onClick={handleCreateDraft} className="bg-cyan-700 text-white px-10 py-4 rounded-lg font-bold text-xl shadow-lg hover:bg-cyan-800 transition-all">Salvar rascunho</button>
                             </div>
                         </div>
                     )}
@@ -840,7 +1080,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                         <>
                             <button
                                 onClick={() => notify({ type: 'info', message: 'Rascunho salvo automaticamente.' })}
-                                className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded font-bold border border-indigo-200 dark:border-indigo-800"
+                                className="px-6 py-2 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300 rounded font-bold border border-cyan-200 dark:border-cyan-800"
                             >
                                 Salvar rascunho
                             </button>
@@ -857,7 +1097,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
 
 const RelatoriosSituacionais = () => {
     const { notify, confirm } = useNotifications();
-    const [ubsInfo, setUbsInfo] = useState(null);
+    const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -866,14 +1106,15 @@ const RelatoriosSituacionais = () => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
   const isUserRole = user?.role === 'USER';
+    const selectedReport = reports.find((r) => r.id === selectedReportId) || null;
 
   const fetchRelatorios = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) { setError('Sessão expirada. Faça login.'); setLoading(false); return; }
-            const data = await ubsService.getSingleUbs();
-            setUbsInfo(data);
+                        const data = await ubsService.getUbsReports(1, 50);
+                        setReports(data);
       setError('');
     } catch (err) { 
         if(err.response?.status === 401) setError('Não autorizado. Faça login novamente.');
@@ -895,7 +1136,7 @@ const RelatoriosSituacionais = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`/api/ubs/${id}`, { headers: { Authorization: `Bearer ${token}` } });
-            setUbsInfo(null);
+            fetchRelatorios();
         } catch (err) {
             notify({ type: 'error', message: 'Erro ao excluir o relatório.' });
         }
@@ -913,38 +1154,32 @@ const RelatoriosSituacionais = () => {
   };
 
   return (
-    <div className="pt-10">
+    <div className="page-shell pt-10">
       <FullReportModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         reportId={selectedReportId}
         onRefresh={fetchRelatorios}
-                ubsInfo={ubsInfo}
+                                ubsInfo={selectedReport}
       />
 
-            <div className="container mx-auto p-6 bg-white dark:bg-slate-900 rounded-xl shadow-lg rise-fade">
+                        <div className="page-panel p-6 rise-fade">
                 <div className="flex justify-between items-center mb-5">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Relatórios Situacionais</h1>
-            <p className="text-gray-500 dark:text-slate-400 mt-1">Gerencie os diagnósticos das Unidades Básicas de Saúde</p>
+                        <h1 className="page-title">Relatórios Situacionais</h1>
+                        <p className="page-subtitle">Gerencie os diagnósticos das Unidades Básicas de Saúde</p>
           </div>
-                    {!isUserRole && !ubsInfo && (
-                                                <button onClick={() => { setSelectedReportId(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
+                    {!isUserRole && reports.length === 0 && (
+                                                                                                <button onClick={() => { setSelectedReportId(null); setModalOpen(true); }} className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
                             <PlusIcon className="w-5 h-5" />
                             Criar relatório
-                        </button>
-                    )}
-                    {!isUserRole && ubsInfo && (
-                                                <button onClick={() => { setSelectedReportId(ubsInfo.id); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
-                            <PencilSquareIcon className="w-5 h-5" />
-                            Editar relatório
                         </button>
                     )}
         </div>
 
                 <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 px-5 py-4 shadow-sm rise-fade stagger-3">
                     <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Salve o rascunho para destravar seções e anexos. Atualize indicadores antes de exportar o PDF.
+                        Salve o rascunho para destravar as seções. Atualize indicadores antes de exportar o PDF.
                     </div>
                 </div>
 
@@ -963,53 +1198,58 @@ const RelatoriosSituacionais = () => {
                     </div>
                 ) : (
                     <div>
-                        {!ubsInfo ? (
+                        {reports.length === 0 ? (
                             <div className="text-center py-12 text-gray-500 dark:text-slate-400">
                                 Nenhum relatório encontrado. Configure a UBS para iniciar o diagnóstico.
                             </div>
                         ) : (
-                            <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-6">
-                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                    <div>
-                                        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-                                            {ubsInfo.nome_relatorio || 'Diagnóstico situacional'}
-                                        </h2>
-                                        <p className="text-sm text-gray-500 dark:text-slate-400">UBS: {ubsInfo.nome_ubs || '-'}</p>
-                                        <div className="mt-2 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${ubsInfo.status === 'DRAFT' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'}`}>
-                                                {ubsInfo.status === 'DRAFT' ? 'RASCUNHO' : 'ENVIADO'}
-                                            </span>
-                                            <span>CNES: {ubsInfo.cnes || 'Não informado'}</span>
+                            <div className="grid grid-cols-1 gap-4">
+                                {reports.map((report) => (
+                                    <div key={report.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-6">
+                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                            <div>
+                                                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+                                                    {report.nome_relatorio || 'Diagnóstico situacional'}
+                                                </h2>
+                                                <p className="text-sm text-gray-500 dark:text-slate-400">UBS: {report.nome_ubs || '-'}</p>
+                                                <div className="mt-2 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${report.status === 'DRAFT' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'}`}>
+                                                        {report.status === 'DRAFT' ? 'RASCUNHO' : 'ENVIADO'}
+                                                    </span>
+                                                    <span>CNES: {report.cnes || 'Não informado'}</span>
+                                                    <span>Período: {report.periodo_referencia || '-'}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {!isUserRole && (
+                                                    <button
+                                                        onClick={() => { setSelectedReportId(report.id); setModalOpen(true); }}
+                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+                                                        title="Editar Relatório"
+                                                    >
+                                                        <PencilSquareIcon className="w-5 h-5" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleExport(report.id)}
+                                                    className="p-2 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-600"
+                                                    title="Exportar PDF"
+                                                >
+                                                    <DocumentArrowDownIcon className="w-5 h-5" />
+                                                </button>
+                                                {!isUserRole && (
+                                                    <button
+                                                        onClick={() => handleDelete(report.id)}
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                                                        title="Excluir Relatório"
+                                                    >
+                                                        <TrashIcon className="w-5 h-5" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {!isUserRole && (
-                                            <button
-                                                onClick={() => { setSelectedReportId(ubsInfo.id); setModalOpen(true); }}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
-                                                title="Editar Relatório"
-                                            >
-                                                <PencilSquareIcon className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => handleExport(ubsInfo.id)}
-                                            className="p-2 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-600"
-                                            title="Exportar PDF"
-                                        >
-                                            <DocumentArrowDownIcon className="w-5 h-5" />
-                                        </button>
-                                        {!isUserRole && (
-                                            <button
-                                                onClick={() => handleDelete(ubsInfo.id)}
-                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
-                                                title="Excluir Relatório"
-                                            >
-                                                <TrashIcon className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         )}
                     </div>

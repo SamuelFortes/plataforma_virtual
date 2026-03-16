@@ -1,11 +1,8 @@
 from typing import List, Optional
-from pathlib import Path
-import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 import logging
 from fastapi.responses import Response as FastAPIResponse
-from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -19,7 +16,6 @@ from app.models.diagnostico_models import (
     ProfessionalGroup,
     TerritoryProfile,
     UBSNeeds,
-    UBSAttachment,
     UBSProblem,
     UBSIntervention,
     UBSInterventionAction,
@@ -45,7 +41,6 @@ from app.schemas.diagnostico_schemas import (
     UBSNeedsCreate,
     UBSNeedsUpdate,
     UBSNeedsOut,
-    UBSAttachmentOut,
     UBSProblemCreate,
     UBSProblemUpdate,
     UBSProblemOut,
@@ -68,19 +63,6 @@ from app.utils.deps import get_current_professional_user, get_current_active_use
 diagnostico_router = APIRouter(prefix="/ubs", tags=["diagnostico"])
 
 logger = logging.getLogger(__name__)
-
-_UPLOADS_BASE_DIR = Path(__file__).resolve().parents[1] / "uploads"
-
-
-def _sanitize_filename(name: str) -> str:
-    allowed = []
-    for ch in (name or ""):
-        if ch.isalnum() or ch in ("-", "_", ".", " "):
-            allowed.append(ch)
-        else:
-            allowed.append("_")
-    cleaned = "".join(allowed).strip().replace(" ", "_")
-    return cleaned or "arquivo"
 
 
 def _gut_score(gravidade: int, urgencia: int, tendencia: int) -> int:
@@ -699,7 +681,6 @@ async def get_full_diagnosis(
             selectinload(UBS.professional_groups),
             selectinload(UBS.territory_profile),
             selectinload(UBS.needs),
-            selectinload(UBS.attachments),
         )
         .where(UBS.id == ubs.id)
     )
@@ -759,10 +740,6 @@ async def get_full_diagnosis(
 
     saida_ubs = UBSOut.model_validate(ubs_obj)
 
-    saida_anexos: List[UBSAttachmentOut] = [
-        UBSAttachmentOut.model_validate(a) for a in (ubs_obj.attachments or [])
-    ]
-
     return FullDiagnosisOut(
         ubs=saida_ubs,
         services=saida_servicos,
@@ -770,7 +747,6 @@ async def get_full_diagnosis(
         professional_groups=saida_profissionais,
         territory_profile=saida_territorio,
         needs=saida_necessidades,
-        attachments=saida_anexos,
         submission=metadados_envio,
     )
 
@@ -1065,141 +1041,6 @@ async def delete_intervention_action(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-# ----------------------- Anexos -----------------------
-
-
-@diagnostico_router.get("/{ubs_id}/attachments", response_model=List[UBSAttachmentOut])
-async def list_ubs_attachments(
-    ubs_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
-):
-    ubs = await _get_ubs_or_404(ubs_id, current_user, db)
-    resultado = await db.execute(
-        select(UBSAttachment)
-        .where(UBSAttachment.ubs_id == ubs.id)
-        .order_by(UBSAttachment.created_at.desc())
-    )
-    return resultado.scalars().all()
-
-
-@diagnostico_router.post(
-    "/{ubs_id}/attachments",
-    response_model=List[UBSAttachmentOut],
-    status_code=status.HTTP_201_CREATED,
-)
-async def upload_ubs_attachments(
-    ubs_id: int,
-    files: List[UploadFile] = File(...),
-    section: str = Form("PROBLEMAS"),
-    description: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
-):
-    ubs = await _get_ubs_or_404(ubs_id, current_user, db)
-
-    if not files:
-        raise HTTPException(status_code=400, detail="Nenhum arquivo enviado")
-
-    target_dir = _UPLOADS_BASE_DIR / f"ubs_{ubs.id}"
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    created: List[UBSAttachment] = []
-    for f in files:
-        content = await f.read()
-        size_bytes = len(content)
-        if size_bytes <= 0:
-            continue
-
-        # Limite simples (10MB por arquivo)
-        if size_bytes > 10 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail=f"Arquivo muito grande: {f.filename}")
-
-        original = _sanitize_filename(f.filename or "arquivo")
-        suffix = Path(original).suffix
-        stored_name = f"{uuid.uuid4().hex}{suffix}"
-        stored_path = target_dir / stored_name
-        stored_path.write_bytes(content)
-
-        att = UBSAttachment(
-            ubs_id=ubs.id,
-            original_filename=original,
-            content_type=f.content_type,
-            size_bytes=size_bytes,
-            storage_path=str(stored_path.relative_to(_UPLOADS_BASE_DIR)),
-            section=section,
-            description=description,
-        )
-        db.add(att)
-        created.append(att)
-
-    if not created:
-        raise HTTPException(status_code=400, detail="Nenhum arquivo válido enviado")
-
-    await db.commit()
-    for att in created:
-        await db.refresh(att)
-    return created
-
-
-async def _get_attachment_or_404(
-    attachment_id: int,
-    current_user: Usuario,
-    db: AsyncSession,
-) -> UBSAttachment:
-    resultado = await db.execute(
-        select(UBSAttachment)
-        .join(UBS)
-        .where(
-            UBSAttachment.id == attachment_id,
-            UBS.is_deleted.is_(False),
-        )
-    )
-    att = resultado.scalar_one_or_none()
-    if not att:
-        raise HTTPException(status_code=404, detail="Anexo não encontrado")
-    return att
-
-
-@diagnostico_router.get("/attachments/{attachment_id}/download")
-async def download_ubs_attachment(
-    attachment_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
-):
-    att = await _get_attachment_or_404(attachment_id, current_user, db)
-    file_path = _UPLOADS_BASE_DIR / att.storage_path
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
-
-    return FileResponse(
-        path=str(file_path),
-        media_type=att.content_type or "application/octet-stream",
-        filename=att.original_filename,
-    )
-
-
-@diagnostico_router.delete("/attachments/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_ubs_attachment(
-    attachment_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
-):
-    att = await _get_attachment_or_404(attachment_id, current_user, db)
-    file_path = _UPLOADS_BASE_DIR / att.storage_path
-
-    await db.delete(att)
-    await db.commit()
-
-    try:
-        if file_path.exists():
-            file_path.unlink()
-    except Exception:
-        pass
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 # ----------------------- Exportação (PDF/ReportLab) -----------------------
 
 
@@ -1215,35 +1056,13 @@ async def export_situational_report_pdf(
     módulos da plataforma (problemas/intervenções, microáreas, agendamentos,
     cronograma e materiais educativos) usando ReportLab.
     """
-    from models.agendamento_models import Agendamento
-    from models.cronograma_models import CronogramaEvent
-    from models.gestao_equipes_models import Microarea, AgenteSaude
-    from models.materiais_models import EducationalMaterial, EducationalMaterialFile
-    from models.auth_models import ProfissionalUbs
+    from app.models.agendamento_models import Agendamento
+    from app.models.cronograma_models import CronogramaEvent
+    from app.models.gestao_equipes_models import Microarea, AgenteSaude
+    from app.models.materiais_models import EducationalMaterial, EducationalMaterialFile
+    from app.models.auth_models import ProfissionalUbs
 
     diagnosis = await get_full_diagnosis(ubs_id=ubs_id, db=db, current_user=current_user)
-
-    # --- Anexos ---
-    attachments_stmt = (
-        select(UBSAttachment)
-        .join(UBS)
-        .where(
-            UBSAttachment.ubs_id == ubs_id,
-            UBS.is_deleted.is_(False),
-        )
-        .order_by(UBSAttachment.created_at.asc())
-    )
-    attachments = (await db.execute(attachments_stmt)).scalars().all()
-    attachments_for_pdf = [
-        {
-            "original_filename": a.original_filename,
-            "content_type": a.content_type,
-            "storage_path": a.storage_path,
-            "section": a.section,
-            "description": a.description,
-        }
-        for a in attachments
-    ]
 
     # --- Problemas + Intervenções + Ações ---
     problems_stmt = (
@@ -1407,8 +1226,6 @@ async def export_situational_report_pdf(
             diagnosis,
             municipality="Município de Parnaíba",
             reference_period=(diagnosis.ubs.periodo_referencia or ""),
-            attachments=attachments_for_pdf,
-            attachments_base_dir=_UPLOADS_BASE_DIR,
             extra_data=extra_data,
         )
     except Exception as exc:
