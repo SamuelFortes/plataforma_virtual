@@ -6,7 +6,7 @@ import { ubsService } from '../services/ubsService';
 
 const InputField = ({ label, name, value, onChange, type = 'text', required, placeholder }) => (
   <div className="mb-4">
-    <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+    <label htmlFor={name} className="block text-sm font-medium text-gray-700 dark:text-slate-300">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     <input
@@ -16,7 +16,7 @@ const InputField = ({ label, name, value, onChange, type = 'text', required, pla
       value={value || ''}
       onChange={onChange}
       placeholder={placeholder}
-      className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+      className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-md shadow-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
       required={required}
     />
   </div>
@@ -24,7 +24,7 @@ const InputField = ({ label, name, value, onChange, type = 'text', required, pla
 
 const TextAreaField = ({ label, name, value, onChange, placeholder }) => (
   <div className="mb-4">
-    <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+    <label htmlFor={name} className="block text-sm font-medium text-gray-700 dark:text-slate-300">
       {label}
     </label>
     <textarea
@@ -34,7 +34,7 @@ const TextAreaField = ({ label, name, value, onChange, placeholder }) => (
       onChange={onChange}
       placeholder={placeholder}
       rows={4}
-      className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+      className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-md shadow-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
     />
   </div>
 );
@@ -146,17 +146,17 @@ const SetupUbs = () => {
   return (
     <div className="container mx-auto p-8">
       {checking && (
-        <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-          <p className="text-gray-600">Carregando configuração da UBS...</p>
+        <div className="bg-white dark:bg-slate-900 shadow-md rounded-lg p-6 mb-8">
+          <p className="text-gray-600 dark:text-slate-400">Carregando configuração da UBS...</p>
         </div>
       )}
 
       {!checking && (
-      <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-        <h1 className="text-2xl font-semibold text-gray-800">
+      <div className="bg-white dark:bg-slate-900 shadow-md rounded-lg p-6 mb-8">
+        <h1 className="text-2xl font-semibold text-gray-800 dark:text-slate-100">
           {existingUbs ? 'Editar UBS' : 'Configuração inicial da UBS'}
         </h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-600 dark:text-slate-400">
           {existingUbs
             ? 'Atualize as informações principais da unidade.'
             : 'Preencha os dados principais para ativar a plataforma.'}
@@ -166,7 +166,7 @@ const SetupUbs = () => {
       )}
 
       {!checking && (
-      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 shadow-md rounded-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InputField label="Nome da UBS" name="nome_ubs" value={form.nome_ubs} onChange={handleChange} required />
           <InputField label="CNES" name="cnes" value={form.cnes} onChange={handleChange} required />

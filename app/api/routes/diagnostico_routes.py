@@ -95,15 +95,6 @@ async def create_ubs(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_professional_user),
 ):
-    existing_count = await db.execute(
-        select(func.count(UBS.id)).where(UBS.is_deleted.is_(False))
-    )
-    if existing_count.scalar_one() > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="UBS já cadastrada. Esta plataforma suporta apenas uma UBS.",
-        )
-
     ubs = UBS(
         tenant_id=1,
         owner_user_id=current_user.id,
