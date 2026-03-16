@@ -13,7 +13,7 @@ import {
 // --- COMPONENTES VISUAIS ---
 
 const SectionCard = ({ title, subtitle, children, disabled, lockedMessage }) => (
-    <div className={`bg-white dark:bg-slate-900 shadow-md rounded-lg mb-8 transition-opacity duration-300 ${disabled ? 'opacity-60 relative' : ''}`}>
+    <div className={`page-panel mb-8 transition-opacity duration-300 ${disabled ? 'opacity-60 relative' : ''}`}>
         {disabled && lockedMessage && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100 dark:bg-slate-800 bg-opacity-50 rounded-lg">
                 <div className="bg-white dark:bg-slate-900 p-3 rounded shadow border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 font-medium text-sm text-center">
@@ -21,7 +21,7 @@ const SectionCard = ({ title, subtitle, children, disabled, lockedMessage }) => 
                 </div>
             </div>
         )}
-        <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 rounded-t-lg">
+        <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 rounded-t-2xl">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white">{title}</h3>
             {subtitle && <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{subtitle}</p>}
         </div>
@@ -43,7 +43,7 @@ const InputField = ({ label, name, value, onChange, type = 'text', helpText, pla
             value={value || ''}
             onChange={onChange}
             placeholder={placeholder}
-            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:text-white dark:placeholder-slate-500"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-cyan-600 focus:border-cyan-600 sm:text-sm dark:text-white dark:placeholder-slate-500"
             {...props}
         />
         {helpText && <p className="mt-2 text-xs text-gray-500 dark:text-slate-400 italic">{helpText}</p>}
@@ -62,7 +62,7 @@ const TextAreaField = ({ label, name, value, onChange, helpText, placeholder, ..
             onChange={onChange}
             placeholder={placeholder}
             rows={props.rows || 4}
-            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:text-white dark:placeholder-slate-500"
+            className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-cyan-600 focus:border-cyan-600 sm:text-sm dark:text-white dark:placeholder-slate-500"
             {...props}
         />
         {helpText && <p className="mt-2 text-xs text-gray-500 dark:text-slate-400 italic">{helpText}</p>}
@@ -302,7 +302,7 @@ const IndicatorsSection = ({ ubsId, initialData, onUpdate }) => {
                     <TextAreaField label="Observações (opcional)" name="observacoes" rows={2} value={formData.observacoes} onChange={e => setFormData(p => ({...p, observacoes: e.target.value}))} placeholder="Fonte dos dados, critérios, etc."/>
                     <div className="flex justify-end gap-2 mt-2">
                         <button type="button" onClick={() => setFormData({ nome_indicador: '', valor: '', meta: '', tipo_valor: 'PERCENTUAL', periodo_quadrimestre: '', periodo_ano: '', observacoes: '' })} className="text-sm font-medium text-gray-600 dark:text-slate-400 hover:underline">Limpar</button>
-                        <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700 transition-colors">Salvar indicador</button>
+                        <button type="submit" className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800 transition-colors">Salvar indicador</button>
                     </div>
                 </form>
             </div>
@@ -399,7 +399,7 @@ const ProfessionalsSection = ({ ubsId, initialData, onUpdate }) => {
                     </div>
                     <div className="md:col-span-3 flex justify-end gap-2">
                         <button type="button" onClick={() => setFormData({ cargo_funcao: '', quantidade: '', tipo_vinculo: '', observacoes: '' })} className="text-sm font-medium text-gray-600 dark:text-slate-400 hover:underline">Limpar</button>
-                        <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700 transition-colors">Salvar profissional</button>
+                        <button type="submit" className="bg-cyan-700 text-white px-4 py-2 rounded font-bold hover:bg-cyan-800 transition-colors">Salvar profissional</button>
                     </div>
                 </form>
             </div>
@@ -594,7 +594,7 @@ const CronogramasSection = ({ ubsId, data, onFieldChange, onSave }) => {
                     <button
                         type="button"
                         onClick={() => setEditorTarget('cronograma_ubs')}
-                        className="mt-3 px-4 py-2 rounded-md bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+                        className="mt-3 px-4 py-2 rounded-md bg-cyan-700 text-white text-sm font-semibold hover:bg-cyan-800"
                     >
                         Personalizar cronograma
                     </button>
@@ -607,7 +607,7 @@ const CronogramasSection = ({ ubsId, data, onFieldChange, onSave }) => {
                     <button
                         type="button"
                         onClick={() => setEditorTarget('cronograma_residentes')}
-                        className="mt-3 px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                        className="mt-3 px-4 py-2 rounded-md bg-cyan-700 text-white text-sm font-semibold hover:bg-cyan-800"
                     >
                         Personalizar cronograma
                     </button>
@@ -618,7 +618,7 @@ const CronogramasSection = ({ ubsId, data, onFieldChange, onSave }) => {
                 <button
                     type="button"
                     onClick={onSave}
-                    className="bg-emerald-600 text-white px-6 py-2 rounded font-bold hover:bg-emerald-700"
+                    className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800"
                 >
                     Salvar cronogramas (reutilizável)
                 </button>
@@ -664,7 +664,7 @@ const CronogramasSection = ({ ubsId, data, onFieldChange, onSave }) => {
                                     await onSave();
                                     setEditorTarget(null);
                                 }}
-                                className="px-4 py-2 rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700"
+                                className="px-4 py-2 rounded-md bg-cyan-700 text-white font-semibold hover:bg-cyan-800"
                             >
                                 Salvar e fechar editor
                             </button>
@@ -1025,7 +1025,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                                 placeholder="Informe situações de vulnerabilidade: alagamentos, violência, descarte irregular de lixo, entre outras." 
                             />
                             <div className="flex justify-end">
-                                <button onClick={() => handleSectionPut('territory', reportData?.territory || { descricao_territorio: '', potencialidades_territorio: '', riscos_vulnerabilidades: '' })} className="bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-700">Salvar seção</button>
+                                <button onClick={() => handleSectionPut('territory', reportData?.territory || { descricao_territorio: '', potencialidades_territorio: '', riscos_vulnerabilidades: '' })} className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800">Salvar seção</button>
                             </div>
                         </div>
                     </SectionCard>
@@ -1057,7 +1057,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                                 placeholder="Reforma de telhado, substituição de portas, acessibilidade, adequação elétrica e pintura." 
                             />
                             <div className="flex justify-end">
-                                <button onClick={() => handleSectionPut('needs', reportData?.needs || { problemas_identificados: '', necessidades_equipamentos_insumos: '', necessidades_especificas_acs: '', necessidades_infraestrutura_manutencao: '' })} className="bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-700">Salvar seção</button>
+                                <button onClick={() => handleSectionPut('needs', reportData?.needs || { problemas_identificados: '', necessidades_equipamentos_insumos: '', necessidades_especificas_acs: '', necessidades_infraestrutura_manutencao: '' })} className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800">Salvar seção</button>
                             </div>
                         </div>
                     </SectionCard>
@@ -1066,7 +1066,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                         <div className="flex justify-center my-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <div className="text-center">
                                 <p className="mb-4 text-blue-800 dark:text-blue-300 font-medium">Preencha Nome da UBS, CNES e Área de atuação acima e clique abaixo para desbloquear as demais seções.</p>
-                                <button onClick={handleCreateDraft} className="bg-blue-600 text-white px-10 py-4 rounded-lg font-bold text-xl shadow-lg hover:bg-blue-700 transition-all">Salvar rascunho</button>
+                                <button onClick={handleCreateDraft} className="bg-cyan-700 text-white px-10 py-4 rounded-lg font-bold text-xl shadow-lg hover:bg-cyan-800 transition-all">Salvar rascunho</button>
                             </div>
                         </div>
                     )}
@@ -1080,7 +1080,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                         <>
                             <button
                                 onClick={() => notify({ type: 'info', message: 'Rascunho salvo automaticamente.' })}
-                                className="px-6 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded font-bold border border-indigo-200 dark:border-indigo-800"
+                                className="px-6 py-2 bg-cyan-50 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-300 rounded font-bold border border-cyan-200 dark:border-cyan-800"
                             >
                                 Salvar rascunho
                             </button>
@@ -1154,7 +1154,7 @@ const RelatoriosSituacionais = () => {
   };
 
   return (
-    <div className="pt-10">
+    <div className="page-shell pt-10">
       <FullReportModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -1163,14 +1163,14 @@ const RelatoriosSituacionais = () => {
                                 ubsInfo={selectedReport}
       />
 
-            <div className="container mx-auto p-6 bg-white dark:bg-slate-900 rounded-xl shadow-lg rise-fade">
+                        <div className="page-panel p-6 rise-fade">
                 <div className="flex justify-between items-center mb-5">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Relatórios Situacionais</h1>
-            <p className="text-gray-500 dark:text-slate-400 mt-1">Gerencie os diagnósticos das Unidades Básicas de Saúde</p>
+                        <h1 className="page-title">Relatórios Situacionais</h1>
+                        <p className="page-subtitle">Gerencie os diagnósticos das Unidades Básicas de Saúde</p>
           </div>
                     {!isUserRole && reports.length === 0 && (
-                                                <button onClick={() => { setSelectedReportId(null); setModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
+                                                                                                <button onClick={() => { setSelectedReportId(null); setModalOpen(true); }} className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
                             <PlusIcon className="w-5 h-5" />
                             Criar relatório
                         </button>

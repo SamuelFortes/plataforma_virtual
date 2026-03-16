@@ -12,14 +12,14 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-PRIMARY = colors.HexColor("#0A2740")
-ACCENT = colors.HexColor("#0E7490")
-ACCENT2 = colors.HexColor("#1D4ED8")
-MUTED = colors.HexColor("#475569")
+PRIMARY = colors.HexColor("#0F172A")
+ACCENT = colors.HexColor("#0F766E")
+ACCENT2 = colors.HexColor("#0E7490")
+MUTED = colors.HexColor("#334155")
 LIGHT = colors.HexColor("#F8FAFC")
 TABLE_HEADER = colors.HexColor("#E2E8F0")
-TABLE_GRID = colors.HexColor("#CBD5E1")
-SECTION_BG = colors.HexColor("#EFF6FF")
+TABLE_GRID = colors.HexColor("#94A3B8")
+SECTION_BG = colors.HexColor("#ECFEFF")
 PRIORITY_BG = colors.HexColor("#FEF3C7")
 SUCCESS_BG = colors.HexColor("#DCFCE7")
 WARNING_BG = colors.HexColor("#FEF9C3")
@@ -367,7 +367,7 @@ def generate_situational_report_pdf_simple(
     org_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E8EEF5")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#E2E8F0")),
                 ("BOX", (0, 0), (-1, -1), 0.6, ACCENT2),
                 ("LEFTPADDING", (0, 0), (-1, -1), 10),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 10),
@@ -383,7 +383,7 @@ def generate_situational_report_pdf_simple(
     header_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F6FAFF")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ECFEFF")),
                 ("BOX", (0, 0), (-1, -1), 0.6, ACCENT2),
                 ("LEFTPADDING", (0, 0), (-1, -1), 10),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 10),
@@ -486,7 +486,7 @@ def generate_situational_report_pdf_simple(
     story.append(Spacer(1, 4))
     if services:
         rows = _chunk(services, 2)
-        services_data = [[_cell(item), _cell(row[1]) if len(row) > 1 else _cell("")] for row in rows]
+        services_data = [[_cell(row[0]), _cell(row[1]) if len(row) > 1 else _cell("")] for row in rows]
         services_table = Table(services_data, colWidths=[7.95 * cm, 7.95 * cm])
         services_table.setStyle(
             TableStyle(
