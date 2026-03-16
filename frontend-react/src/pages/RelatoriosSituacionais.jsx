@@ -407,100 +407,6 @@ const ProfessionalsSection = ({ ubsId, initialData, onUpdate }) => {
     );
 }
 
-const AttachmentsSection = ({ ubsId, initialData, onUpdate }) => {
-    const { notify, confirm } = useNotifications();
-    const [file, setFile] = useState(null);
-    const [description, setDescription] = useState('');
-    const [section, setSection] = useState('PROBLEMAS');
-    const [isUploading, setIsUploading] = useState(false);
-
-    const handleUpload = async (e) => {
-        e.preventDefault();
-        if (!file) {
-            notify({ type: 'warning', message: 'Selecione um arquivo.' });
-            return;
-        }
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append('files', file);
-        formData.append('description', description);
-        formData.append('section', section);
-        try {
-            await axios.post(`/api/ubs/${ubsId}/attachments`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setFile(null); setDescription(''); onUpdate(); 
-        } catch(err) {
-            notify({ type: 'error', message: 'Erro ao enviar anexo.' });
-        }
-        finally { setIsUploading(false); }
-    }
-
-    const handleDelete = async (attachmentId) => {
-        const confirmed = await confirm({
-            title: 'Remover anexo',
-            message: 'Deseja remover este anexo?',
-            confirmLabel: 'Remover',
-            cancelLabel: 'Cancelar',
-        });
-        if (!confirmed) return;
-        try {
-            await axios.delete(`/api/ubs/attachments/${attachmentId}`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            onUpdate();
-        } catch (err) {
-            notify({ type: 'error', message: 'Erro ao remover o anexo.' });
-        }
-    };
-
-    return (
-        <SectionCard title="Anexos" subtitle="Envie fotos e arquivos relacionados (ex.: registros fotográficos)." disabled={!ubsId} lockedMessage="Salve o rascunho para habilitar os anexos.">
-             <form onSubmit={handleUpload} className="p-4 border dark:border-slate-700 rounded-md bg-gray-50 dark:bg-slate-800 mb-6 space-y-4">
-                <input type="file" onChange={e => setFile(e.target.files[0])} className="block w-full text-sm text-gray-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-400"/>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Seção do PDF</label>
-                        <select value={section} onChange={e => setSection(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 dark:text-white border border-gray-300 dark:border-slate-600 rounded-md text-sm">
-                            <option value="PROBLEMAS">Problemas identificados</option>
-                            <option value="NEC_EQUIP_INSUMOS">Necessidades (equipamentos e insumos)</option>
-                            <option value="NEC_INFRA">Necessidades (infraestrutura e manutenção)</option>
-                            <option value="NEC_ACS">Necessidades (ACS)</option>
-                            <option value="TERRITORIO">Território</option>
-                            <option value="POTENCIALIDADES">Potencialidades</option>
-                            <option value="RISCOS">Riscos e vulnerabilidades</option>
-                            <option value="GERAL">Identificação</option>
-                        </select>
-                    </div>
-                    <InputField label="Legenda/descrição (opcional)" value={description} onChange={e => setDescription(e.target.value)} placeholder="Ex.: Foto da janela quebrada"/>
-                </div>
-                <button type="submit" disabled={isUploading} className="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    {isUploading ? 'Enviando...' : 'Enviar anexos'}
-                </button>
-             </form>
-             <h4 className="font-bold text-gray-700 dark:text-slate-300 mb-2">Anexos enviados</h4>
-             <ul className="divide-y divide-gray-200 dark:divide-slate-700">
-                 {initialData && initialData.map(att => (
-                     <li key={att.id} className="py-3 flex justify-between items-center text-sm">
-                         <span>{att.original_filename} <span className="text-gray-500 dark:text-slate-400">({att.description || att.section})</span></span>
-                         <div className="flex gap-3">
-                            <a href={`/api/ubs/attachments/${att.id}/download`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Baixar</a>
-                            <button
-                                type="button"
-                                onClick={() => handleDelete(att.id)}
-                                className="text-red-600 hover:underline"
-                            >
-                                Remover
-                            </button>
-                         </div>
-                     </li>
-                 ))}
-                 {(!initialData || initialData.length === 0) && <li className="text-center py-4 text-gray-500 dark:text-slate-400 italic">Nenhum anexo enviado.</li>}
-             </ul>
-        </SectionCard>
-    );
-}
-
 // --- MODAL DE RELATÓRIO COMPLETO ---
 
 const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
@@ -574,7 +480,6 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                 professionals: response.data.professional_groups, 
                 territory: response.data.territory_profile, 
                 needs: response.data.needs, 
-                attachments: response.data.attachments,
                 indicators: response.data.indicators_latest
             };
             setReportData(full);
@@ -584,7 +489,7 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
     };
 
     const preparePayload = (data) => {
-        const { isDirty, id, created_at, updated_at, status, owner_user_id, tenant_id, submitted_at, professionals, territory, needs, attachments, indicators, ...cleaned } = data;
+        const { isDirty, id, created_at, updated_at, status, owner_user_id, tenant_id, submitted_at, professionals, territory, needs, indicators, ...cleaned } = data;
         const numericFields = ['numero_habitantes_ativos', 'numero_familias_cadastradas', 'numero_microareas', 'numero_domicilios', 'domicilios_rurais'];
         Object.keys(cleaned).forEach(key => {
             if (cleaned[key] === "") cleaned[key] = numericFields.includes(key) ? 0 : null;
@@ -723,8 +628,6 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                     <SectionCard title="Fluxo, agenda e acesso">
                         <TextAreaField label="Fluxo, agenda e acesso" name="fluxo_agenda_acesso" value={generalData?.fluxo_agenda_acesso} onChange={handleGeneralChange} placeholder="Descreva como funciona o acolhimento, o agendamento, a demanda espontânea, os gargalos e o acesso a exames/encaminhamentos, entre outros." />
                     </SectionCard>
-
-                    <AttachmentsSection ubsId={id} initialData={reportData?.attachments} onUpdate={() => fetchFullData(id)} />
 
                     <SectionCard title="Informações gerais da UBS">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -944,7 +847,7 @@ const RelatoriosSituacionais = () => {
 
                 <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 px-5 py-4 shadow-sm rise-fade stagger-3">
                     <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Salve o rascunho para destravar seções e anexos. Atualize indicadores antes de exportar o PDF.
+                        Salve o rascunho para destravar as seções. Atualize indicadores antes de exportar o PDF.
                     </div>
                 </div>
 

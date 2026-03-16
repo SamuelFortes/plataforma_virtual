@@ -73,33 +73,9 @@ class UBS(Base):
     )
     needs = relationship("UBSNeeds", back_populates="ubs", uselist=False, cascade="all, delete-orphan")
 
-    attachments = relationship(
-        "UBSAttachment", back_populates="ubs", cascade="all, delete-orphan"
-    )
-
     problems = relationship(
         "UBSProblem", back_populates="ubs", cascade="all, delete-orphan"
     )
-
-
-class UBSAttachment(Base):
-    __tablename__ = "ubs_attachments"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    ubs_id = Column(Integer, ForeignKey("ubs.id", ondelete="CASCADE"), nullable=False)
-
-    original_filename = Column(String(255), nullable=False)
-    content_type = Column(String(100), nullable=True)
-    size_bytes = Column(Integer, nullable=False, default=0)
-    storage_path = Column(Text, nullable=False)
-
-    # Indica em qual seção do PDF este anexo deve aparecer
-    section = Column(String(50), nullable=True)
-    description = Column(Text, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    ubs = relationship("UBS", back_populates="attachments")
 
 
 class Service(Base):

@@ -28,7 +28,6 @@ from app.models.diagnostico_models import (
     ProfessionalGroup,
     Service,
     UBS,
-    UBSAttachment,
     UBSNeeds,
     UBSService,
     TerritoryProfile,
@@ -51,7 +50,6 @@ class ReportData:
     services: list[str]
     territory: Optional[TerritoryProfile]
     needs: Optional[UBSNeeds]
-    attachments: list[UBSAttachment]
 
 
 @dataclass
@@ -210,17 +208,6 @@ def _seed_data(session: Session) -> int:
     for service in services:
         session.add(UBSService(ubs_id=ubs.id, service_id=service.id))
 
-    attachment = UBSAttachment(
-        ubs_id=ubs.id,
-        original_filename="anexo_exemplo.pdf",
-        content_type="application/pdf",
-        size_bytes=0,
-        storage_path="anexos/anexo_exemplo.pdf",
-        section="PROBLEMAS",
-        description="Anexo de exemplo para o PDF.",
-    )
-    session.add(attachment)
-
     session.commit()
     return ubs.id
 
@@ -256,14 +243,6 @@ def _load_report_data(session: Session, ubs_id: int) -> ReportData:
         select(TerritoryProfile).where(TerritoryProfile.ubs_id == ubs_id)
     ).scalar_one_or_none()
     needs = session.execute(select(UBSNeeds).where(UBSNeeds.ubs_id == ubs_id)).scalar_one_or_none()
-    attachments = (
-        session.execute(
-            select(UBSAttachment).where(UBSAttachment.ubs_id == ubs_id).order_by(UBSAttachment.created_at)
-        )
-        .scalars()
-        .all()
-    )
-
     return ReportData(
         ubs=ubs,
         indicators=indicators,
@@ -271,7 +250,6 @@ def _load_report_data(session: Session, ubs_id: int) -> ReportData:
         services=list(services),
         territory=territory,
         needs=needs,
-        attachments=attachments,
     )
 
 
@@ -522,15 +500,6 @@ def _build_pdf(data: ReportData, charts: ChartFiles, output_path: Path) -> None:
     story.append(Paragraph("Servicos", style_section))
     services_text = "<br/>".join([f"- {name}" for name in data.services]) if data.services else "-"
     story.append(Paragraph(services_text, style_body))
-
-    story.append(Paragraph("Anexos", style_section))
-    if data.attachments:
-        attachments_text = "<br/>".join(
-            [f"- {att.original_filename} ({att.section or 'GERAL'})" for att in data.attachments]
-        )
-    else:
-        attachments_text = "-"
-    story.append(Paragraph(attachments_text, style_body))
 
     doc = SimpleDocTemplate(
         str(output_path),

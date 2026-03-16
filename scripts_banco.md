@@ -131,20 +131,6 @@ create table public.ubs (
   constraint ubs_submitted_by_fkey foreign KEY (submitted_by) references usuarios (id)
 ) TABLESPACE pg_default;
 
-create table public.ubs_attachments (
-  id serial not null,
-  ubs_id integer not null,
-  original_filename character varying(255) not null,
-  content_type character varying(100) null,
-  size_bytes integer not null,
-  storage_path text not null,
-  section character varying(50) null,
-  description text null,
-  created_at timestamp with time zone null default now(),
-  constraint ubs_attachments_pkey primary key (id),
-  constraint ubs_attachments_ubs_id_fkey foreign KEY (ubs_id) references ubs (id) on delete CASCADE
-) TABLESPACE pg_default;
-
 create table public.ubs_needs (
   id serial not null,
   ubs_id integer not null,
@@ -769,4 +755,11 @@ ALTER TABLE public.agentes_saude
 ALTER TABLE public.agentes_saude
   ADD CONSTRAINT agentes_saude_microarea_id_fkey
   FOREIGN KEY (microarea_id) REFERENCES public.microareas(id) ON DELETE SET NULL;
+```
+
+### 2.13. Remover Tabela `ubs_attachments` (Relatório Situacional somente texto) - **NOVO**
+Com a remoção da funcionalidade de anexos/imagens do relatório situacional, execute a migração abaixo.
+
+```sql
+DROP TABLE IF EXISTS public.ubs_attachments;
 ```

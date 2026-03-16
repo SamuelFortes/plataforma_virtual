@@ -74,19 +74,6 @@ class UBSOut(UBSBase):
     submitted_at: Optional[datetime]
 
 
-class UBSAttachmentOut(BaseModel):
-    id: int
-    ubs_id: int
-    original_filename: str
-    content_type: Optional[str]
-    size_bytes: int
-    section: Optional[str] = None
-    description: Optional[str] = None
-    created_at: Optional[datetime]
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class UBSProblemBase(BaseModel):
     titulo: str = Field(..., max_length=255)
     descricao: Optional[str] = None
@@ -360,7 +347,6 @@ class FullDiagnosisOut(BaseModel):
     professional_groups: List[ProfessionalGroupOut]
     territory_profile: Optional[TerritoryProfileOut]
     needs: Optional[UBSNeedsOut]
-    attachments: List[UBSAttachmentOut] = Field(default_factory=list)
     submission: UBSSubmissionMetadata
 
 
