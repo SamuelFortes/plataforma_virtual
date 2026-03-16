@@ -398,18 +398,21 @@ def generate_situational_report_pdf_simple(
     story.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", style_cover_meta))
     story.append(Spacer(1, 12))
 
+    def _cell(value: Any, style: ParagraphStyle = style_table) -> Paragraph:
+        return Paragraph(_escape_xml(str(value if value is not None else "-")), style)
+
     summary_data = [
-        ["UBS", _escape_xml(ubs.nome_ubs or "-"), "CNES", _escape_xml(ubs.cnes or "-")],
-        ["Equipe", _escape_xml(ubs.identificacao_equipe or "-"), "Área", _escape_xml(ubs.area_atuacao or "-")],
+        [_cell("UBS", style_table_header), _cell(ubs.nome_ubs or "-"), _cell("CNES", style_table_header), _cell(ubs.cnes or "-")],
+        [_cell("Equipe", style_table_header), _cell(ubs.identificacao_equipe or "-"), _cell("Área", style_table_header), _cell(ubs.area_atuacao or "-")],
     ]
-    summary_table = Table(summary_data, colWidths=[1.6 * cm, 6.4 * cm, 1.6 * cm, 6.9 * cm])
+    summary_table = Table(summary_data, colWidths=[1.3 * cm, 5.7 * cm, 1.3 * cm, 8.2 * cm])
     summary_table.setStyle(
         TableStyle(
             [
                 ("TEXTCOLOR", (0, 0), (-1, -1), PRIMARY),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ]
         )
     )
@@ -419,22 +422,22 @@ def generate_situational_report_pdf_simple(
     story.append(_section_header(next_section("Identificação e Caracterização da UBS"), style_h2))
     story.append(Spacer(1, 4))
     table_data = [
-        ["Campo", "Valor"],
-        ["Nome do relatório", _escape_xml(ubs.nome_relatorio or "-")],
-        ["Período de referência", _escape_xml(ubs.periodo_referencia or "-")],
-        ["Responsável", _escape_xml(getattr(ubs, "responsavel_nome", "-") or "-")],
-        ["Cargo do responsável", _escape_xml(getattr(ubs, "responsavel_cargo", "-") or "-")],
-        ["Contato", _escape_xml(getattr(ubs, "responsavel_contato", "-") or "-")],
-        ["Habitantes ativos", _fmt(ubs.numero_habitantes_ativos)],
-        ["Microáreas", _fmt(ubs.numero_microareas)],
-        ["Famílias cadastradas", _fmt(ubs.numero_familias_cadastradas)],
-        ["Domicílios", _fmt(ubs.numero_domicilios)],
-        ["Domicílios rurais", _fmt(ubs.domicilios_rurais)],
-        ["Data de inauguração", _fmt_date(ubs.data_inauguracao)],
-        ["Data da última reforma", _fmt_date(ubs.data_ultima_reforma)],
-        ["Modelo de atenção", _escape_xml(getattr(ubs, "gestao_modelo_atencao", "-") or "-")],
+        [_cell("Campo", style_table_header), _cell("Valor", style_table_header)],
+        [_cell("Nome do relatório"), _cell(ubs.nome_relatorio or "-")],
+        [_cell("Período de referência"), _cell(ubs.periodo_referencia or "-")],
+        [_cell("Responsável"), _cell(getattr(ubs, "responsavel_nome", "-") or "-")],
+        [_cell("Cargo do responsável"), _cell(getattr(ubs, "responsavel_cargo", "-") or "-")],
+        [_cell("Contato"), _cell(getattr(ubs, "responsavel_contato", "-") or "-")],
+        [_cell("Habitantes ativos"), _cell(_fmt(ubs.numero_habitantes_ativos))],
+        [_cell("Microáreas"), _cell(_fmt(ubs.numero_microareas))],
+        [_cell("Famílias cadastradas"), _cell(_fmt(ubs.numero_familias_cadastradas))],
+        [_cell("Domicílios"), _cell(_fmt(ubs.numero_domicilios))],
+        [_cell("Domicílios rurais"), _cell(_fmt(ubs.domicilios_rurais))],
+        [_cell("Data de inauguração"), _cell(_fmt_date(ubs.data_inauguracao))],
+        [_cell("Data da última reforma"), _cell(_fmt_date(ubs.data_ultima_reforma))],
+        [_cell("Modelo de atenção"), _cell(getattr(ubs, "gestao_modelo_atencao", "-") or "-")],
     ]
-    info_table = Table(table_data, colWidths=[5.4 * cm, 10.6 * cm])
+    info_table = Table(table_data, colWidths=[5.1 * cm, 11.4 * cm])
     info_table.setStyle(_zebra_style(len(table_data)))
     story.append(info_table)
     story.append(Spacer(1, 8))
@@ -483,15 +486,17 @@ def generate_situational_report_pdf_simple(
     story.append(Spacer(1, 4))
     if services:
         rows = _chunk(services, 2)
-        services_data = [[_escape_xml(item) for item in row] + [""] * (2 - len(row)) for row in rows]
-        services_table = Table(services_data, colWidths=[8.0 * cm, 8.0 * cm])
+        services_data = [[_cell(item), _cell(row[1]) if len(row) > 1 else _cell("")] for row in rows]
+        services_table = Table(services_data, colWidths=[7.95 * cm, 7.95 * cm])
         services_table.setStyle(
             TableStyle(
                 [
-                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
                     ("TEXTCOLOR", (0, 0), (-1, -1), PRIMARY),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ]
             )
         )
@@ -565,16 +570,27 @@ def generate_situational_report_pdf_simple(
     story.append(Spacer(1, 4))
     groups = diagnosis.professional_groups or []
     if groups:
-        g_data = [["Cargo/Função", "Qtd.", "Vínculo", "Observações"]]
+        g_data = [[
+            _cell("Cargo/Função", style_table_header),
+            _cell("Qtd.", style_table_header),
+            _cell("Vínculo", style_table_header),
+            _cell("Observações", style_table_header),
+        ]]
         for g in groups:
             g_data.append([
-                _escape_xml(str(g.cargo_funcao)),
-                _escape_xml(str(g.quantidade)),
-                _escape_xml(str(g.tipo_vinculo or "-")),
-                _escape_xml(str(g.observacoes or "-")),
+                _cell(g.cargo_funcao),
+                _cell(g.quantidade),
+                _cell(g.tipo_vinculo or "-"),
+                _cell(g.observacoes or "-"),
             ])
-        g_table = Table(g_data, colWidths=[5.0 * cm, 1.5 * cm, 3.5 * cm, 6.5 * cm])
+        g_table = Table(g_data, colWidths=[4.9 * cm, 1.4 * cm, 3.4 * cm, 6.8 * cm])
         g_table.setStyle(_zebra_style(len(g_data)))
+        g_table.setStyle(TableStyle([
+            ("ALIGN", (1, 0), (1, -1), "CENTER"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
         story.append(g_table)
     else:
         story.append(Paragraph("Nenhum profissional registrado.", style_body))

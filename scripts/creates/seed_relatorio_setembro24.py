@@ -7,6 +7,10 @@ Objetivo:
 Uso:
     python scripts/creates/seed_relatorio_setembro24.py
 
+Scripts complementares:
+    python scripts/creates/seed_relatorio_setembro24_quick.py
+    python scripts/creates/seed_relatorio_setembro24_indicadores.py
+
 Observacoes:
 - Campos sem correspondencia 1:1 no schema foram consolidados em campos textuais
   (principalmente descritivos_gerais, observacoes_gerais e necessidades).
@@ -83,7 +87,6 @@ def _upsert_ubs(session: Session, owner_id: int) -> UBS:
         select(UBS).where(
             UBS.nome_ubs == "ESF 41 - Adalto Parentes Sampaio",
             UBS.periodo_referencia == "SETEMBRO/2024",
-            UBS.is_deleted.is_(False),
         )
     ).scalar_one_or_none()
 
@@ -97,6 +100,9 @@ def _upsert_ubs(session: Session, owner_id: int) -> UBS:
             status="DRAFT",
         )
         session.add(ubs)
+
+    # Reativa caso tenha sido removida por soft-delete.
+    ubs.is_deleted = False
 
     # Dados gerais do formulario (mapeados do PDF)
     ubs.nome_relatorio = "RELATORIO COMPLETO SETEMBRO-24 - ESF 41 ADALTO PARENTES SAMPAIO"
