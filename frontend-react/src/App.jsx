@@ -176,7 +176,7 @@ function App() {
               } />
 
               <Route path="/materiais-educativos" element={
-                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR']}>
+                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <MateriaisEducativos />
                   </UbsGate>

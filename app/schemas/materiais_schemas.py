@@ -10,7 +10,6 @@ class EducationalMaterialBase(BaseModel):
     descricao: Optional[str] = None
     categoria: Optional[str] = Field(None, max_length=80)
     publico_alvo: Optional[str] = Field(None, max_length=80)
-    ativo: bool = True
 
 
 class EducationalMaterialCreate(EducationalMaterialBase):
@@ -22,7 +21,6 @@ class EducationalMaterialUpdate(BaseModel):
     descricao: Optional[str] = None
     categoria: Optional[str] = Field(None, max_length=80)
     publico_alvo: Optional[str] = Field(None, max_length=80)
-    ativo: Optional[bool] = None
 
 
 class EducationalMaterialFileOut(BaseModel):

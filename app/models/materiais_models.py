@@ -15,7 +15,6 @@ class EducationalMaterial(Base):
     descricao = Column(Text, nullable=True)
     categoria = Column(String(80), nullable=True)
     publico_alvo = Column(String(80), nullable=True)
-    ativo = Column(Boolean, nullable=False, default=True)
 
     created_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     updated_by = Column(Integer, ForeignKey("usuarios.id"), nullable=True)

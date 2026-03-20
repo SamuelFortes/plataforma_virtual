@@ -4,7 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
@@ -22,6 +22,12 @@ from app.utils.jwt_handler import verify_token
 materiais_router = APIRouter(prefix="/materiais", tags=["materiais"])
 
 EDIT_ROLES = {"GESTOR", "PROFISSIONAL"}
+VIEW_ROLES = {"USER", "PROFISSIONAL", "GESTOR"}
+
+PUBLICO_ALVO_PROFISSIONAIS = "Profissionais"
+PUBLICO_ALVO_EQUIPE = "Equipe"
+PUBLICO_ALVO_USUARIOS = "Usuários"
+PUBLICO_ALVO_AMBOS = "AMBOS"
 
 _UPLOADS_BASE_DIR = Path(__file__).resolve().parents[1] / "uploads" / "materials"
 _MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
@@ -42,6 +48,47 @@ def _ensure_role(current_user: Usuario) -> None:
     role = (current_user.role or "USER").upper()
     if role not in EDIT_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito")
+
+
+def _ensure_view_role(current_user: Usuario) -> None:
+    role = (current_user.role or "USER").upper()
+    if role not in VIEW_ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito")
+
+
+def _build_material_view_filter(user_role: str):
+    role = (user_role or "USER").upper()
+    if role == "GESTOR":
+        return None
+    if role == "PROFISSIONAL":
+        return or_(
+            EducationalMaterial.publico_alvo.is_(None),
+            EducationalMaterial.publico_alvo == "",
+            EducationalMaterial.publico_alvo == PUBLICO_ALVO_PROFISSIONAIS,
+            EducationalMaterial.publico_alvo == PUBLICO_ALVO_EQUIPE,
+            EducationalMaterial.publico_alvo == PUBLICO_ALVO_AMBOS,
+        )
+    return or_(
+        EducationalMaterial.publico_alvo.is_(None),
+        EducationalMaterial.publico_alvo == "",
+        EducationalMaterial.publico_alvo == PUBLICO_ALVO_USUARIOS,
+        EducationalMaterial.publico_alvo == PUBLICO_ALVO_AMBOS,
+    )
+
+
+def _can_view_material(material: EducationalMaterial, user_role: str) -> bool:
+    role = (user_role or "USER").upper()
+    if role == "GESTOR":
+        return True
+
+    publico_alvo = (material.publico_alvo or "").strip()
+    if publico_alvo == "":
+        return True
+    if publico_alvo == PUBLICO_ALVO_AMBOS:
+        return True
+    if role == "PROFISSIONAL":
+        return publico_alvo in {PUBLICO_ALVO_PROFISSIONAIS, PUBLICO_ALVO_EQUIPE}
+    return publico_alvo == PUBLICO_ALVO_USUARIOS
 
 
 def _resolve_path(storage_path: str) -> Path:
@@ -91,15 +138,20 @@ async def list_materials(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user),
 ):
-    _ensure_role(current_user)
+    _ensure_view_role(current_user)
     await _get_ubs_or_404(ubs_id, db)
 
-    resultado = await db.execute(
+    stmt = (
         select(EducationalMaterial)
         .where(EducationalMaterial.ubs_id == ubs_id)
         .options(selectinload(EducationalMaterial.files))
         .order_by(EducationalMaterial.created_at.desc())
     )
+    visibility_filter = _build_material_view_filter(current_user.role or "USER")
+    if visibility_filter is not None:
+        stmt = stmt.where(visibility_filter)
+
+    resultado = await db.execute(stmt)
     return resultado.scalars().all()
 
 
@@ -110,7 +162,6 @@ async def create_material(
     descricao: str | None = Form(None),
     categoria: str | None = Form(None),
     publico_alvo: str | None = Form(None),
-    ativo: bool = Form(True),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user),
@@ -124,7 +175,6 @@ async def create_material(
         descricao=descricao,
         categoria=categoria,
         publico_alvo=publico_alvo,
-        ativo=ativo,
         created_by=current_user.id,
         updated_by=current_user.id,
     )
@@ -274,11 +324,15 @@ async def download_material_file(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Não autenticado")
 
     usuario = await _get_user_from_token(raw_token, db)
-    _ensure_role(usuario)
+    _ensure_view_role(usuario)
 
     file_entry = await db.get(EducationalMaterialFile, file_id)
     if not file_entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado")
+
+    material = await db.get(EducationalMaterial, file_entry.material_id)
+    if not material or not _can_view_material(material, usuario.role or "USER"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito")
 
     storage_path = _resolve_path(file_entry.storage_path)
     if not storage_path.exists():

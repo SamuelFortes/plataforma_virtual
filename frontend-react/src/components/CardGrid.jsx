@@ -56,14 +56,14 @@ const CardGrid = () => {
     },
   ];
 
-  if (['PROFISSIONAL', 'GESTOR'].includes(role)) {
+  if (['USER', 'PROFISSIONAL', 'GESTOR'].includes(role)) {
     allCards.push(
       {
         title: 'Materiais Educativos',
         to: '/materiais-educativos',
         icon: BookOpenIcon,
         inDevelopment: false,
-        allowed: ['PROFISSIONAL', 'GESTOR']
+        allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
       },
       {
         title: 'Cronograma e Calendário',

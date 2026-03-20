@@ -274,7 +274,6 @@ create table public.educational_materials (
   descricao text null,
   categoria character varying(80) null,
   publico_alvo character varying(80) null,
-  ativo boolean not null default true,
   created_by integer null,
   updated_by integer null,
   created_at timestamp with time zone null default now(),
@@ -838,4 +837,12 @@ Garante que nenhuma UBS existente fique invisível por ter `is_deleted = NULL`.
 
 ```sql
 UPDATE public.ubs SET is_deleted = false WHERE is_deleted IS NULL;
+```
+
+### 2.17. Remover coluna `ativo` de `educational_materials` (Materiais Educativos) - **NOVO**
+Com a simplificação da funcionalidade de Materiais Educativos, a coluna `ativo` deixou de ser usada e deve ser removida para manter o banco alinhado ao backend atual.
+
+```sql
+ALTER TABLE public.educational_materials
+DROP COLUMN IF EXISTS ativo;
 ```

@@ -64,7 +64,7 @@ async def _create_ubs(client: AsyncClient, headers: dict) -> int:
 
 
 @pytest.mark.asyncio
-async def test_materiais_blocked_for_user(test_client):
+async def test_materiais_list_filtered_by_publico_alvo_for_user(test_client):
     client, async_session = test_client
     async with async_session() as session:
         gestor = await _create_user(session, "gestor_materiais@example.com", role="GESTOR")
@@ -73,8 +73,36 @@ async def test_materiais_blocked_for_user(test_client):
         user_headers = _auth_headers(user)
 
     ubs_id = await _create_ubs(client, gestor_headers)
+
+    common_payload = {
+        "ubs_id": str(ubs_id),
+        "descricao": "Documento",
+        "categoria": "Geral",
+        "ativo": "true",
+    }
+
+    await client.post(
+        "/api/materiais",
+        data={**common_payload, "titulo": "Somente profissionais", "publico_alvo": "Profissionais"},
+        headers=gestor_headers,
+    )
+    await client.post(
+        "/api/materiais",
+        data={**common_payload, "titulo": "Somente usuarios", "publico_alvo": "Usuários"},
+        headers=gestor_headers,
+    )
+    await client.post(
+        "/api/materiais",
+        data={**common_payload, "titulo": "Material ambos", "publico_alvo": "AMBOS"},
+        headers=gestor_headers,
+    )
+
     response = await client.get(f"/api/materiais?ubs_id={ubs_id}", headers=user_headers)
-    assert response.status_code == 403
+    assert response.status_code == 200
+    titulos = {item["titulo"] for item in response.json()}
+    assert "Somente usuarios" in titulos
+    assert "Material ambos" in titulos
+    assert "Somente profissionais" not in titulos
 
 
 @pytest.mark.asyncio
