@@ -16,6 +16,7 @@ class Usuario(Base):
     ativo = Column(Boolean, default=True, nullable=False)
     tentativas_login = Column(Integer, default=0, nullable=False)
     bloqueado_ate = Column(DateTime(timezone=True), nullable=True)
+    active_ubs_id = Column(Integer, ForeignKey("ubs.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

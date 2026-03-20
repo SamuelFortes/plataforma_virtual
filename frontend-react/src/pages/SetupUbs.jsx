@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useNotifications } from '../components/ui/Notifications';
 import { api } from '../services/api';
 import { ubsService } from '../services/ubsService';
@@ -41,9 +41,11 @@ const TextAreaField = ({ label, name, value, onChange, placeholder }) => (
 
 const SetupUbs = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isNewMode = searchParams.get('mode') === 'new';
   const { notify } = useNotifications();
   const [saving, setSaving] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(!isNewMode);
   const [existingUbs, setExistingUbs] = useState(null);
 
   const [form, setForm] = useState({
@@ -65,6 +67,9 @@ const SetupUbs = () => {
   });
 
   useEffect(() => {
+    // mode=new: pula carregamento, vai direto para formulário vazio (criar nova UBS)
+    if (isNewMode) return;
+
     let active = true;
     const loadExisting = async () => {
       try {
@@ -99,7 +104,7 @@ const SetupUbs = () => {
 
     loadExisting();
     return () => { active = false; };
-  }, []);
+  }, [isNewMode]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -133,9 +138,9 @@ const SetupUbs = () => {
         notify({ type: 'success', message: 'UBS atualizada com sucesso.' });
       } else {
         await api.request('/ubs', { method: 'POST', body: payload, requiresAuth: true });
-        notify({ type: 'success', message: 'UBS configurada com sucesso.' });
+        notify({ type: 'success', message: 'UBS cadastrada com sucesso.' });
       }
-      navigate('/dashboard');
+      navigate(isNewMode ? '/gerenciar-ubs' : '/dashboard');
     } catch (error) {
       notify({ type: 'error', message: error.message || 'Erro ao salvar configuração da UBS.' });
     } finally {

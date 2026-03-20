@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
@@ -73,7 +73,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # IMPORTANTE: o CORS precisa ser configurado ANTES das rotas.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://plataforma-virtual.onrender.com"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "https://plataforma-virtual.onrender.com"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"],
     allow_headers=["*"],
@@ -90,6 +90,7 @@ _routers_to_load = [
     ("app.api.routes.cronograma_routes", ["cronograma_router"]),
     ("app.api.routes.suporte_feedback_routes", ["suporte_feedback_router"]),
     ("app.api.routes.gestao_equipes_routes", ["gestao_equipes_router"]),
+    ("app.api.routes.gestor_ubs_routes", ["gestor_ubs_router"]),
 ]
 
 for module_path, router_names in _routers_to_load:
@@ -129,9 +130,15 @@ async def health_check(request: Request, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         return {"status": "error", "database": str(e)}
 
-# Rota catch-all para servir o index.html do React para qualquer outra rota
+# Rota catch-all para servir o index.html do React para qualquer outra rota.
+# IMPORTANTE: rotas /api/ nunca devem retornar HTML — retorna 404 JSON.
 @app.get("/{catchall:path}")
 async def serve_react_app(catchall: str):
+    if catchall.startswith("api/"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Rota de API não encontrada: /{catchall}",
+        )
     index_path = "frontend-react/dist/index.html"
     if os.path.exists(index_path):
         return FileResponse(index_path)

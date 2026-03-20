@@ -45,6 +45,7 @@ async function request(path, options = {}) {
 
   const fetchOptions = {
     method,
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
@@ -104,8 +105,14 @@ async function request(path, options = {}) {
       throw new Error(`HTTP ${response.status}: ${detailMessage}`);
     }
 
-    const data = await response.json().catch(() => ({}));
-    return data;
+    const text = await response.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      console.error(`[API] Resposta não é JSON válido para ${method} ${url}:`, text.substring(0, 200));
+      throw new Error("Resposta inválida do servidor (não é JSON).");
+    }
   } catch (error) {
     console.error(`[API ERROR] ${method} ${url}:`, error);
     throw error;

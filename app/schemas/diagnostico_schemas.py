@@ -98,6 +98,10 @@ class UBSOut(UBSBase):
     submitted_at: Optional[datetime]
 
 
+class GestorUBSItem(UBSOut):
+    is_active: bool = False
+
+
 class UBSProblemBase(BaseModel):
     titulo: str = Field(..., max_length=255)
     descricao: Optional[str] = None

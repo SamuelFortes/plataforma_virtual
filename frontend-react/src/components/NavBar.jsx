@@ -15,7 +15,8 @@ import {
   EnvelopeIcon,
   KeyIcon,
   Cog6ToothIcon,
-  BriefcaseIcon
+  BriefcaseIcon,
+  BuildingOffice2Icon
 } from '@heroicons/react/24/outline';
 import { ubsService } from '../services/ubsService';
 
@@ -179,6 +180,16 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                     >
                       <BriefcaseIcon className="w-4 h-4 mr-2" />
                       Cargos
+                    </Link>
+                  )}
+                  {role === 'GESTOR' && (
+                    <Link
+                      to="/gerenciar-ubs"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <BuildingOffice2Icon className="w-4 h-4 mr-2" />
+                      Gerenciar UBS
                     </Link>
                   )}
                   <button

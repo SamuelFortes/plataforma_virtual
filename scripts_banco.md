@@ -821,3 +821,21 @@ ALTER TABLE public.ubs
 ADD COLUMN IF NOT EXISTS cronograma_ubs_observacoes text,
 ADD COLUMN IF NOT EXISTS cronograma_residentes_observacoes text;
 ```
+
+### 2.16. Gerenciamento de UBS por Gestor - **NOVO**
+
+**a) Coluna de UBS ativa por usuário:**
+Permite que cada gestor defina qual UBS está ativa no momento. `ON DELETE SET NULL` garante que se a UBS for removida, o campo volta a NULL automaticamente.
+
+```sql
+ALTER TABLE public.usuarios
+  ADD COLUMN IF NOT EXISTS active_ubs_id INTEGER NULL
+    REFERENCES ubs(id) ON DELETE SET NULL;
+```
+
+**b) Corrigir registros com `is_deleted` NULL:**
+Garante que nenhuma UBS existente fique invisível por ter `is_deleted = NULL`.
+
+```sql
+UPDATE public.ubs SET is_deleted = false WHERE is_deleted IS NULL;
+```

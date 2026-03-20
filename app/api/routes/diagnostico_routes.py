@@ -95,6 +95,19 @@ async def create_ubs(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_professional_user),
 ):
+    is_gestor = (current_user.role or "USER").upper() == "GESTOR"
+
+    # GESTOR pode criar múltiplas UBS; demais roles só podem ter uma.
+    if not is_gestor:
+        existing_count = await db.execute(
+            select(func.count(UBS.id)).where(UBS.is_deleted.is_(False))
+        )
+        if existing_count.scalar_one() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="UBS já cadastrada. Esta plataforma suporta apenas uma UBS.",
+            )
+
     ubs = UBS(
         tenant_id=1,
         owner_user_id=current_user.id,
@@ -125,6 +138,12 @@ async def create_ubs(
     db.add(ubs)
     await db.commit()
     await db.refresh(ubs)
+
+    # Se é o GESTOR e não tem UBS ativa, define esta como ativa automaticamente.
+    if is_gestor and not current_user.active_ubs_id:
+        current_user.active_ubs_id = ubs.id
+        await db.commit()
+
     return ubs
 
 

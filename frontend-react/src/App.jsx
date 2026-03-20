@@ -16,6 +16,7 @@ import GerenciarMensagens from './pages/GerenciarMensagens';
 import GestaoEquipesMicroareas from './pages/GestaoEquipesMicroareas';
 import RedefinirSenha from './pages/RedefinirSenha';
 import GerenciarCargos from './pages/GerenciarCargos';
+import GerenciarUbs from './pages/GerenciarUbs';
 import NavBar from './components/NavBar';
 import { NotificationsProvider } from './components/ui/Notifications';
 import { api } from './services/api';
@@ -149,6 +150,12 @@ function App() {
               <Route path="/gerenciar-cargos" element={
                 <ProtectedRoute allowedRoles={['GESTOR']}>
                   <GerenciarCargos />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/gerenciar-ubs" element={
+                <ProtectedRoute allowedRoles={['GESTOR']}>
+                  <GerenciarUbs />
                 </ProtectedRoute>
               } />
 
