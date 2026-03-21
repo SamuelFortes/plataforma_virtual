@@ -1129,9 +1129,25 @@ async def export_situational_report_pdf(
         for ag in (m.agentes or []):
             nome = getattr(ag.usuario, "nome", "-") if ag.usuario else "-"
             agentes_list.append({"nome": nome, "ativo": ag.ativo})
+
+        localidades = m.localidades or []
+        if isinstance(localidades, list):
+            bairros = []
+            for item in localidades:
+                if isinstance(item, dict):
+                    nome_localidade = (item.get("nome") or "").strip()
+                else:
+                    nome_localidade = str(item).strip()
+                if nome_localidade:
+                    bairros.append(nome_localidade)
+            bairro_label = ", ".join(bairros) if bairros else "-"
+        else:
+            bairro_label = str(localidades).strip() or "-"
+
         microareas_data.append({
             "nome": m.nome,
-            "bairro": m.bairro,
+            "bairro": bairro_label,
+            "localidades": localidades,
             "status": m.status,
             "populacao": m.populacao,
             "familias": m.familias,
@@ -1200,7 +1216,7 @@ async def export_situational_report_pdf(
     materiais_stmt = (
         select(EducationalMaterial)
         .options(selectinload(EducationalMaterial.files))
-        .where(EducationalMaterial.ubs_id == ubs_id, EducationalMaterial.ativo.is_(True))
+        .where(EducationalMaterial.ubs_id == ubs_id)
         .order_by(EducationalMaterial.titulo)
     )
     materiais_rows = (await db.execute(materiais_stmt)).scalars().all()

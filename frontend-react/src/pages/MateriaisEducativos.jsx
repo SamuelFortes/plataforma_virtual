@@ -8,6 +8,7 @@ import {
   DocumentArrowDownIcon,
   ChevronRightIcon,
   SparklesIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '../services/api';
 import { ubsService } from '../services/ubsService';
@@ -54,6 +55,7 @@ const buildDownloadUrl = (fileId) => {
 const getPublicoAlvo = (value) => PUBLICO_ALVO_OPTIONS.find((p) => p.value === value) || PUBLICO_ALVO_OPTIONS[0];
 
 const MateriaisEducativos = () => {
+  const ITEMS_PER_PAGE = 8;
   const { notify, confirm } = useNotifications();
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
@@ -78,6 +80,8 @@ const MateriaisEducativos = () => {
   const [showForm, setShowForm] = useState(false);
   const [filterPublicoAlvo, setFilterPublicoAlvo] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedMaterials, setExpandedMaterials] = useState({});
 
   const loadUbs = useCallback(async () => {
     try {
@@ -262,6 +266,28 @@ const MateriaisEducativos = () => {
     const publicoAlvoMatch = !filterPublicoAlvo || material.publico_alvo === filterPublicoAlvo;
     return searchMatch && publicoAlvoMatch;
   });
+
+  const totalFiltered = filteredMaterials.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / ITEMS_PER_PAGE));
+  const pageStart = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedMaterials = filteredMaterials.slice(pageStart, pageStart + ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterPublicoAlvo]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const toggleExpanded = (materialId) => {
+    setExpandedMaterials((prev) => ({
+      ...prev,
+      [materialId]: !prev[materialId],
+    }));
+  };
 
   const totalMaterials = materials.length;
 
@@ -532,7 +558,7 @@ const MateriaisEducativos = () => {
                 <div>
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">Materiais</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {filteredMaterials.length} de {totalMaterials} material{totalMaterials !== 1 ? 'is' : ''}
+                    {totalFiltered} de {totalMaterials} material{totalMaterials !== 1 ? 'is' : ''}
                   </p>
                 </div>
               </div>
@@ -553,7 +579,9 @@ const MateriaisEducativos = () => {
                   </div>
                 )}
 
-                {filteredMaterials.map((material) => (
+                {paginatedMaterials.map((material) => {
+                  const isExpanded = !!expandedMaterials[material.id];
+                  return (
                   <div key={material.id} className={`${cardClass} p-6 hover:shadow-md transition-shadow`}>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div className="flex-1">
@@ -581,23 +609,36 @@ const MateriaisEducativos = () => {
                                   {getPublicoAlvo(material.publico_alvo).label}
                                 </span>
                               )}
+                              <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                {material.files.length} arquivo{material.files.length !== 1 ? 's' : ''}
+                              </span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {canManageMaterials && (
+                      <div className="flex items-center gap-2 self-start">
                         <button
-                          onClick={() => handleDelete(material.id)}
-                          className={btnDanger}
+                          onClick={() => toggleExpanded(material.id)}
+                          className={btnSecondary}
                         >
-                          <TrashIcon className="h-4 w-4" /> Remover
+                          <ChevronDownIcon className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          {isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
                         </button>
-                      )}
+                        {canManageMaterials && (
+                          <button
+                            onClick={() => handleDelete(material.id)}
+                            className={btnDanger}
+                          >
+                            <TrashIcon className="h-4 w-4" /> Remover
+                          </button>
+                        )}
+                      </div>
 
                     </div>
 
                     {/* ─ Arquivos ─ */}
+                    {isExpanded && (
                     <div className="mt-4 border-t border-slate-200 dark:border-slate-700 pt-4">
                       {canManageMaterials && (
                         <div className="mb-4 flex flex-col sm:flex-row gap-3">
@@ -660,8 +701,33 @@ const MateriaisEducativos = () => {
                         <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum arquivo anexado</p>
                       )}
                     </div>
+                    )}
                   </div>
-                ))}
+                )})}
+
+                {!isLoading && totalFiltered > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Página {currentPage} de {totalPages}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className={btnSecondary}
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className={btnSecondary}
+                      >
+                        Próxima
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </main>
