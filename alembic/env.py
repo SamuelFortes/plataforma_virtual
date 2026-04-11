@@ -31,13 +31,20 @@ def get_database_url() -> str:
     if url:
         # Alembic usa driver síncrono.
         if url.startswith("sqlite+aiosqlite"):
-            return url.replace("sqlite+aiosqlite", "sqlite", 1)
+            url = url.replace("sqlite+aiosqlite", "sqlite", 1)
         # Garante que a URL é compatível com o driver síncrono do psycopg.
         # Alembic roda de forma síncrona.
         if url.startswith("postgres://"):
-            return url.replace("postgres://", "postgresql+psycopg://", 1)
-        if url.startswith("postgresql://") and "+psycopg" not in url:
-            return url.replace("postgresql://", "postgresql+psycopg://", 1)
+            url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif url.startswith("postgresql://") and "+psycopg" not in url:
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        
+        # Se estiver usando a porta 6543 (Pooler do Supabase em modo de transação),
+        # precisamos desativar prepared statements.
+        if ":6543" in url and "prepared_statements=false" not in url:
+            separator = "&" if "?" in url else "?"
+            url += f"{separator}prepared_statements=false"
+            
         return url
 
     # Fallback para o método antigo de montar a URL a partir de partes (para desenvolvimento local)

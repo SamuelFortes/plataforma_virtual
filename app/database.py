@@ -11,10 +11,25 @@ Base = declarative_base()
 
 
 def _normalize_database_url(url: str) -> str:
+    if not url:
+        return url
+        
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+psycopg://", 1)
-    if url.startswith("postgresql://") and "+psycopg" not in url:
-        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+        url = url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif url.startswith("postgresql://") and "+psycopg" not in url:
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    
+    # Se estiver usando a porta 6543 (Pooler do Supabase em modo de transação),
+    # precisamos desativar prepared statements para o SQLAlchemy/psycopg.
+    if ":6543" in url:
+        if "prepared_statements=false" not in url:
+            separator = "&" if "?" in url else "?"
+            url += f"{separator}prepared_statements=false"
+        
+        # PgBouncer pode requerer um tempo maior de resposta inicial
+        if "connect_timeout" not in url:
+            url += "&connect_timeout=10"
+        
     return url
 
 
@@ -46,10 +61,14 @@ if not DATABASE_URL:
 
 DATABASE_URL = _normalize_database_url(DATABASE_URL)
 
+# Log seguro para debug (sem senha)
+if "@" in DATABASE_URL:
+    _url_parts = DATABASE_URL.split("@")
+    _target = _url_parts[-1]
+    _user_part = _url_parts[0].split("://")[-1].split(":")[0]
+    print(f"INFO: Database connection attempt - User: {_user_part} | Host: {_target}")
+
 #Criando a engine
-#Engine é um objeto do SQLAlchemy usado
-#para gerenciar e configurar conexões entre
-#o BD e a aplicação
 engine_kwargs = {
     "echo": False,
     "future": True,
@@ -61,7 +80,7 @@ if not DATABASE_URL.startswith("sqlite"):
         "pool_size": 2,
         "max_overflow": 3,
         "pool_recycle": 1800,
-        "pool_timeout": 10,
+        "pool_timeout": 15,
     })
 
 engine = None
