@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+import sys
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,6 +15,7 @@ def _normalize_database_url(url: str) -> str:
     if not url:
         return url
         
+    # No psycopg3 (seu caso), o driver deve ser explicitamente +psycopg
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+psycopg://", 1)
     elif url.startswith("postgresql://") and "+psycopg" not in url:
@@ -26,9 +28,8 @@ def _normalize_database_url(url: str) -> str:
             separator = "&" if "?" in url else "?"
             url += f"{separator}prepare_threshold=0"
         
-        # PgBouncer pode requerer um tempo maior de resposta inicial
         if "connect_timeout" not in url:
-            url += "&connect_timeout=10"
+            url += "&connect_timeout=20"
         
     return url
 
@@ -49,24 +50,25 @@ def _build_database_url_from_parts() -> str | None:
     )
 
 
-# Em produção (Render), a DATABASE_URL costuma vir pronta.
-# Em dev, aceitamos DB_* (monta URL) e, se nada for informado, caímos para SQLite.
 if not DATABASE_URL:
     DATABASE_URL = _build_database_url_from_parts()
 
 if not DATABASE_URL:
-    # Fallback para desenvolvimento local sem variáveis de ambiente.
-    # Requer o pacote `aiosqlite`.
     DATABASE_URL = "sqlite+aiosqlite:///./dev.db"
 
 DATABASE_URL = _normalize_database_url(DATABASE_URL)
 
 # Log seguro para debug (sem senha)
-if "@" in DATABASE_URL:
-    _url_parts = DATABASE_URL.split("@")
-    _target = _url_parts[-1]
-    _user_part = _url_parts[0].split("://")[-1].split(":")[0]
-    print(f"INFO: Database connection attempt - User: {_user_part} | Host: {_target}")
+try:
+    if "@" in DATABASE_URL:
+        prefix, rest = DATABASE_URL.split("://", 1)
+        user_pass, host_db = rest.split("@", 1)
+        user = user_pass.split(":")[0]
+        print(f"INFO: Database Attempt -> Driver: {prefix} | User: {user} | Target: {host_db}", flush=True)
+    else:
+        print(f"INFO: Database Attempt -> {DATABASE_URL}", flush=True)
+except Exception:
+    print("INFO: Database Attempt -> (URL format error in log)", flush=True)
 
 #Criando a engine
 engine_kwargs = {
@@ -80,7 +82,7 @@ if not DATABASE_URL.startswith("sqlite"):
         "pool_size": 2,
         "max_overflow": 3,
         "pool_recycle": 1800,
-        "pool_timeout": 15,
+        "pool_timeout": 30,
     })
 
 engine = None
@@ -88,8 +90,6 @@ AsyncSessionLocal = None
 
 if os.getenv("SKIP_ASYNC_ENGINE") != "1":
     engine = create_async_engine(DATABASE_URL, **engine_kwargs)
-
-    # Fábrica de sessões
     AsyncSessionLocal = sessionmaker(
         engine,
         class_=AsyncSession,
@@ -99,7 +99,6 @@ if os.getenv("SKIP_ASYNC_ENGINE") != "1":
     )
 
 
-# Função para criar e fornecer sessões para a rota.
 async def get_db():
     if AsyncSessionLocal is None:
         raise RuntimeError("Async engine not initialized")

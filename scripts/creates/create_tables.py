@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 try:
     from app.database import engine, Base, AsyncSessionLocal
 except ImportError as e:
-    print(f"ERROR: Falha ao importar app.database: {e}")
+    print(f"ERROR: Falha ao importar app.database: {e}", flush=True)
     sys.exit(1)
 
 # Importa os modelos para registrar no metadata
@@ -26,58 +26,60 @@ from app.models.diagnostico_models import Service
 
 
 async def init_db(async_engine: AsyncEngine) -> None:
-    print("INFO: Iniciando criação de tabelas e população inicial...")
+    print("INFO: Iniciando criação de tabelas e população inicial...", flush=True)
+    if async_engine is None:
+        print("ERROR: Engine não inicializada. Verifique DATABASE_URL.", flush=True)
+        return
+
     try:
         # Cria todas as tabelas
         async with async_engine.begin() as conexao:
-            print("INFO: Tentando executar Base.metadata.create_all...")
+            print("INFO: Tentando executar Base.metadata.create_all...", flush=True)
             await conexao.run_sync(Base.metadata.create_all)
-            print("✔ Tabelas verificadas/criadas com sucesso.")
+            print("✔ Tabelas verificadas/criadas com sucesso.", flush=True)
 
         # Popula o catálogo de serviços se estiver vazio
-        async with AsyncSessionLocal() as sessao:
-            print("INFO: Verificando se serviços padrão já existem...")
-            resultado = await sessao.execute(select(Service))
-            if resultado.scalars().first() is None:
-                servicos_padrao = [
-                    "Programa Saúde da Família",
-                    "Atendimento médico",
-                    "Atendimento de enfermagem",
-                    "Atendimento odontológico",
-                    "Atendimento de urgência / acolhimento",
-                    "Procedimentos (curativos, inalação, etc.)",
-                    "Sala de vacina",
-                    "Saúde da criança",
-                    "Saúde da mulher",
-                    "Saúde do homem",
-                    "Saúde do idoso",
-                    "Planejamento familiar",
-                    "Pré-natal",
-                    "Puericultura",
-                    "Atendimento a condições crônicas (hipertensão, diabetes, etc.)",
-                    "Programa Saúde na Escola (PSE)",
-                    "Saúde mental",
-                    "Atendimento multiprofissional (NASF ou equivalente)",
-                    "Testes rápidos de IST",
-                    "Vigilância epidemiológica",
-                    "Vigilância em saúde ambiental",
-                    "Visitas domiciliares",
-                    "Atividades coletivas e preventivas",
-                    "Grupos operativos (gestantes, tabagismo, etc.)",
-                ]
+        if AsyncSessionLocal is not None:
+            async with AsyncSessionLocal() as sessao:
+                print("INFO: Verificando se serviços padrão já existem...", flush=True)
+                resultado = await sessao.execute(select(Service))
+                if resultado.scalars().first() is None:
+                    servicos_padrao = [
+                        "Programa Saúde da Família",
+                        "Atendimento médico",
+                        "Atendimento de enfermagem",
+                        "Atendimento odontológico",
+                        "Atendimento de urgência / acolhimento",
+                        "Procedimentos (curativos, inalação, etc.)",
+                        "Sala de vacina",
+                        "Saúde da criança",
+                        "Saúde da mulher",
+                        "Saúde do homem",
+                        "Saúde do idoso",
+                        "Planejamento familiar",
+                        "Pré-natal",
+                        "Puericultura",
+                        "Atendimento a condições crônicas (hipertensão, diabetes, etc.)",
+                        "Programa Saúde na Escola (PSE)",
+                        "Saúde mental",
+                        "Atendimento multiprofissional (NASF ou equivalente)",
+                        "Testes rápidos de IST",
+                        "Vigilância epidemiológica",
+                        "Vigilância em saúde ambiental",
+                        "Visitas domiciliares",
+                        "Atividades coletivas e preventivas",
+                        "Grupos operativos (gestantes, tabagismo, etc.)",
+                    ]
 
-                for nome in servicos_padrao:
-                    sessao.add(Service(name=nome))
+                    for nome in servicos_padrao:
+                        sessao.add(Service(name=nome))
 
-                await sessao.commit()
-                print("✔ Serviços padrão inseridos com sucesso.")
-            else:
-                print("ℹ Serviços já existentes. Nada a inserir.")
+                    await sessao.commit()
+                    print("✔ Serviços padrão inseridos com sucesso.", flush=True)
+                else:
+                    print("ℹ Serviços já existentes. Nada a inserir.", flush=True)
     except Exception as e:
-        print(f"FATAL: Erro durante a inicialização do banco: {type(e).__name__}: {e}")
-        # Se for erro de conexão, vamos imprimir mais detalhes se possível
-        if "OperationalError" in str(type(e)):
-            print("HINT: Verifique se sua DATABASE_URL está correta e se o banco está acessível.")
+        print(f"FATAL: Erro durante a inicialização do banco: {type(e).__name__}: {e}", flush=True)
         raise e
 
 
