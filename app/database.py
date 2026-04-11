@@ -22,9 +22,9 @@ def _normalize_database_url(url: str) -> str:
     # Se estiver usando a porta 6543 (Pooler do Supabase em modo de transação),
     # precisamos desativar prepared statements para o SQLAlchemy/psycopg.
     if ":6543" in url:
-        if "prepared_statements=false" not in url:
+        if "prepare_threshold=0" not in url:
             separator = "&" if "?" in url else "?"
-            url += f"{separator}prepared_statements=false"
+            url += f"{separator}prepare_threshold=0"
         
         # PgBouncer pode requerer um tempo maior de resposta inicial
         if "connect_timeout" not in url:

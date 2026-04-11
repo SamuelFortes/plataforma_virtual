@@ -40,10 +40,10 @@ def get_database_url() -> str:
             url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         
         # Se estiver usando a porta 6543 (Pooler do Supabase em modo de transação),
-        # precisamos desativar prepared statements.
-        if ":6543" in url and "prepared_statements=false" not in url:
+        # precisamos desativar prepared statements para o psycopg3.
+        if ":6543" in url and "prepare_threshold=0" not in url:
             separator = "&" if "?" in url else "?"
-            url += f"{separator}prepared_statements=false"
+            url += f"{separator}prepare_threshold=0"
             
         return url
 
