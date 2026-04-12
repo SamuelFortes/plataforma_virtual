@@ -8,101 +8,91 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# .strip() remove espaços em branco acidentais
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
-
 Base = declarative_base()
 
+def _build_database_url_from_parts() -> str | None:
+    """Monta a URL a partir de componentes individuais (Mais seguro contra caracteres especiais)"""
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    name = os.getenv("DB_NAME")
+
+    if not all([user, password, host, port, name]):
+        return None
+
+    # Codifica a senha para evitar que caracteres como '@' quebrem a URL
+    safe_password = urllib.parse.quote_plus(password)
+    
+    # Supabase Pooler (6543) exige prepare_threshold=0
+    query = ""
+    if str(port) == "6543":
+        query = "?prepare_threshold=0"
+
+    return f"postgresql+psycopg://{user}:{safe_password}@{host}:{port}/{name}{query}"
 
 def _normalize_database_url(url: str) -> str:
+    """Normaliza uma URL completa vinda de string"""
     if not url:
         return url
         
-    # 1. Trata o caso de senhas com caracteres especiais (@) antes de qualquer coisa
-    if "://" in url and url.count("@") > 1:
-        try:
-            scheme, rest = url.split("://", 1)
-            # O último @ sempre separa as credenciais do host
-            auth_part, host_part = rest.rsplit("@", 1)
-            if ":" in auth_part:
-                user_part, pass_part = auth_part.split(":", 1)
-                # Decodifica se já estiver codificado e recodifica corretamente
-                safe_pass = urllib.parse.quote_plus(urllib.parse.unquote(pass_part))
-                url = f"{scheme}://{user_part}:{safe_pass}@{host_part}"
-        except Exception as e:
-            print(f"DEBUG: Erro ao pré-processar URL: {e}", flush=True)
-
-    # 2. Usa o parser do SQLAlchemy para normalizar o restante
     try:
-        parsed_url = make_url(url)
-        
-        # Garante o driver correto para psycopg3 (assíncrono)
+        # Se a URL tem múltiplos '@', codifica a senha manualmente
+        if url.count("@") > 1 and "://" in url:
+            scheme, rest = url.split("://", 1)
+            auth, host_part = rest.rsplit("@", 1)
+            if ":" in auth:
+                user, pwd = auth.split(":", 1)
+                safe_pwd = urllib.parse.quote_plus(urllib.parse.unquote(pwd))
+                url = f"{scheme}://{user}:{safe_pwd}@{host_part}"
+
+        parsed = make_url(url)
         new_driver = "postgresql+psycopg"
-        if parsed_url.drivername.startswith("sqlite"):
+        
+        if parsed.drivername.startswith("sqlite"):
             return url
             
-        updated_url = parsed_url.set(drivername=new_driver)
+        updated = parsed.set(drivername=new_driver)
         
-        # Se for porta 6543 (Pooler do Supabase), aplica as proteções necessárias
-        if updated_url.port == 6543:
-            query = dict(updated_url.query)
-            # Desativa prepared statements (essencial para modo de transação)
-            query.setdefault("prepare_threshold", "0")
-            updated_url = updated_url.update_query_dict(query)
+        if updated.port == 6543:
+            q = dict(updated.query)
+            q.setdefault("prepare_threshold", "0")
+            updated = updated.update_query_dict(q)
             
-        final_url = str(updated_url)
-        
-        # Log seguro do resultado (esconde a senha)
-        try:
-            safe_log_url = final_url.split("@")[-1] if "@" in final_url else final_url
-            print(f"INFO: Database URL normalized. Host: {safe_log_url}", flush=True)
-        except:
-            pass
-            
-        return final_url
-    except Exception as e:
-        print(f"DEBUG: Falha na normalização final: {e}", flush=True)
-        # Fallback de segurança
+        return str(updated)
+    except:
         if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql+psycopg://", 1)
-        elif "postgresql://" in url and "+psycopg" not in url:
-            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+            return url.replace("postgres://", "postgresql+psycopg://", 1)
         return url
 
+# --- Lógica de Inicialização ---
 
-def _build_database_url_from_parts() -> str | None:
-    database_user = os.getenv("DB_USER")
-    database_password = os.getenv("DB_PASSWORD")
-    database_host = os.getenv("DB_HOST")
-    database_port = os.getenv("DB_PORT")
-    database_name = os.getenv("DB_NAME")
+# 1. Tenta montar pelas partes (recomendado para produção no Render)
+DATABASE_URL = _build_database_url_from_parts()
 
-    if not all([database_user, database_password, database_host, database_port, database_name]):
-        return None
-
-    safe_password = urllib.parse.quote_plus(database_password)
-
-    return (
-        f"postgresql+psycopg://{database_user}:{safe_password}"
-        f"@{database_host}:{database_port}/{database_name}"
-    )
-
-
+# 2. Se não houver partes, tenta a URL completa
 if not DATABASE_URL:
-    DATABASE_URL = _build_database_url_from_parts()
+    DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+    if DATABASE_URL:
+        DATABASE_URL = _normalize_database_url(DATABASE_URL)
 
+# 3. Fallback para SQLite local
 if not DATABASE_URL:
     DATABASE_URL = "sqlite+aiosqlite:///./dev.db"
 
-DATABASE_URL = _normalize_database_url(DATABASE_URL)
+# Log de segurança para conferência no Render
+try:
+    _p = make_url(DATABASE_URL)
+    print(f"INFO: DB_CONNECT -> User: {_p.username} | Host: {_p.host}:{_p.port} | Driver: {_p.drivername}", flush=True)
+except:
+    pass
 
-# Engine Configuration
 engine_kwargs = {
     "echo": False,
     "future": True,
 }
 
-if not DATABASE_URL.startswith("sqlite"):
+if "sqlite" not in DATABASE_URL:
     engine_kwargs.update({
         "pool_pre_ping": True,
         "pool_size": 2,
@@ -123,7 +113,6 @@ if os.getenv("SKIP_ASYNC_ENGINE") != "1":
         autoflush=False,
         autocommit=False,
     )
-
 
 async def get_db():
     if AsyncSessionLocal is None:
