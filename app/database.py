@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.engine.url import make_url
 import os
 import sys
+import urllib.parse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,15 +18,25 @@ def _normalize_database_url(url: str) -> str:
         return url
         
     try:
-        # Usa o parser oficial do SQLAlchemy que lida com caracteres especiais na senha
+        # Se a URL contiver múltiplos '@', pode ser uma senha não codificada
+        # Vamos tentar codificar a parte da senha se detectarmos esse padrão
+        if url.count("@") > 1 and "://" in url:
+            prefix, rest = url.split("://", 1)
+            if "@" in rest:
+                auth, host_part = rest.rsplit("@", 1) # Divide no ÚLTIMO @ (o do host)
+                if ":" in auth:
+                    user, password = auth.split(":", 1)
+                    # Codifica apenas a senha
+                    password = urllib.parse.quote_plus(urllib.parse.unquote(password))
+                    url = f"{prefix}://{user}:{password}@{host_part}"
+
         parsed_url = make_url(url)
         
         # Garante o driver correto para psycopg3
         new_driver = "postgresql+psycopg"
         if parsed_url.drivername.startswith("sqlite"):
-            return url # Mantém sqlite como está
+            return url
             
-        # Reconstrói a URL com o driver assíncrono correto
         updated_url = parsed_url.set(drivername=new_driver)
         
         # Se for porta 6543 (Pooler), aplica proteções específicas
@@ -35,12 +46,10 @@ def _normalize_database_url(url: str) -> str:
             updated_url = updated_url.update_query_dict(query)
             
         return str(updated_url)
-    except Exception as e:
-        # Fallback simples se o make_url falhar (ex: URL muito mal formatada)
+    except Exception:
+        # Fallback simples
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+psycopg://", 1)
-        elif url.startswith("postgresql://") and "+psycopg" not in url:
-            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url
 
 
@@ -54,8 +63,11 @@ def _build_database_url_from_parts() -> str | None:
     if not all([database_user, database_password, database_host, database_port, database_name]):
         return None
 
+    # Codifica a senha para evitar problemas com caracteres especiais como '@'
+    safe_password = urllib.parse.quote_plus(database_password)
+
     return (
-        f"postgresql+psycopg://{database_user}:{database_password}"
+        f"postgresql+psycopg://{database_user}:{safe_password}"
         f"@{database_host}:{database_port}/{database_name}"
     )
 
