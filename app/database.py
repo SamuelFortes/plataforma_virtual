@@ -18,19 +18,22 @@ def _normalize_database_url(url: str) -> str:
     if not url:
         return url
         
-    try:
-        # Se a URL contiver múltiplos '@', codificamos a senha
-        if url.count("@") > 1 and "://" in url:
-            prefix, rest = url.split("://", 1)
-            if "@" in rest:
-                # Divide no último '@', que separa auth do host
-                auth, host_part = rest.rsplit("@", 1)
-                if ":" in auth:
-                    user, password = auth.split(":", 1)
-                    # Decodifica se já estiver codificado e recodifica (evita erro de duplo @)
-                    clean_pass = urllib.parse.quote_plus(urllib.parse.unquote(password))
-                    url = f"{prefix}://{user}:{clean_pass}@{host_part}"
+    # 1. Trata o caso de senhas com caracteres especiais (@) antes de qualquer coisa
+    if "://" in url and url.count("@") > 1:
+        try:
+            scheme, rest = url.split("://", 1)
+            # O último @ sempre separa as credenciais do host
+            auth_part, host_part = rest.rsplit("@", 1)
+            if ":" in auth_part:
+                user_part, pass_part = auth_part.split(":", 1)
+                # Decodifica se já estiver codificado e recodifica corretamente
+                safe_pass = urllib.parse.quote_plus(urllib.parse.unquote(pass_part))
+                url = f"{scheme}://{user_part}:{safe_pass}@{host_part}"
+        except Exception as e:
+            print(f"DEBUG: Erro ao pré-processar URL: {e}", flush=True)
 
+    # 2. Usa o parser do SQLAlchemy para normalizar o restante
+    try:
         parsed_url = make_url(url)
         
         # Garante o driver correto para psycopg3 (assíncrono)
@@ -47,11 +50,23 @@ def _normalize_database_url(url: str) -> str:
             query.setdefault("prepare_threshold", "0")
             updated_url = updated_url.update_query_dict(query)
             
-        return str(updated_url)
+        final_url = str(updated_url)
+        
+        # Log seguro do resultado (esconde a senha)
+        try:
+            safe_log_url = final_url.split("@")[-1] if "@" in final_url else final_url
+            print(f"INFO: Database URL normalized. Host: {safe_log_url}", flush=True)
+        except:
+            pass
+            
+        return final_url
     except Exception as e:
+        print(f"DEBUG: Falha na normalização final: {e}", flush=True)
         # Fallback de segurança
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif "postgresql://" in url and "+psycopg" not in url:
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url
 
 
