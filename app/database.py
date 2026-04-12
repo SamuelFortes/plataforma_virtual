@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.engine.url import make_url
 import os
 import sys
 from dotenv import load_dotenv
@@ -15,23 +16,32 @@ def _normalize_database_url(url: str) -> str:
     if not url:
         return url
         
-    # No psycopg3 (seu caso), o driver deve ser explicitamente +psycopg
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql+psycopg://", 1)
-    elif url.startswith("postgresql://") and "+psycopg" not in url:
-        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-    
-    # Se estiver usando a porta 6543 (Pooler do Supabase em modo de transação),
-    # precisamos desativar prepared statements para o SQLAlchemy/psycopg.
-    if ":6543" in url:
-        if "prepare_threshold=0" not in url:
-            separator = "&" if "?" in url else "?"
-            url += f"{separator}prepare_threshold=0"
+    try:
+        # Usa o parser oficial do SQLAlchemy que lida com caracteres especiais na senha
+        parsed_url = make_url(url)
         
-        if "connect_timeout" not in url:
-            url += "&connect_timeout=20"
+        # Garante o driver correto para psycopg3
+        new_driver = "postgresql+psycopg"
+        if parsed_url.drivername.startswith("sqlite"):
+            return url # Mantém sqlite como está
+            
+        # Reconstrói a URL com o driver assíncrono correto
+        updated_url = parsed_url.set(drivername=new_driver)
         
-    return url
+        # Se for porta 6543 (Pooler), aplica proteções específicas
+        if updated_url.port == 6543:
+            query = dict(updated_url.query)
+            query.setdefault("prepare_threshold", "0")
+            updated_url = updated_url.update_query_dict(query)
+            
+        return str(updated_url)
+    except Exception as e:
+        # Fallback simples se o make_url falhar (ex: URL muito mal formatada)
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif url.startswith("postgresql://") and "+psycopg" not in url:
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url
 
 
 def _build_database_url_from_parts() -> str | None:
@@ -58,19 +68,7 @@ if not DATABASE_URL:
 
 DATABASE_URL = _normalize_database_url(DATABASE_URL)
 
-# Log seguro para debug (sem senha)
-try:
-    if "@" in DATABASE_URL:
-        prefix, rest = DATABASE_URL.split("://", 1)
-        user_pass, host_db = rest.split("@", 1)
-        user = user_pass.split(":")[0]
-        print(f"INFO: Database Attempt -> Driver: {prefix} | User: {user} | Target: {host_db}", flush=True)
-    else:
-        print(f"INFO: Database Attempt -> {DATABASE_URL}", flush=True)
-except Exception:
-    print("INFO: Database Attempt -> (URL format error in log)", flush=True)
-
-#Criando a engine
+# Engine Configuration
 engine_kwargs = {
     "echo": False,
     "future": True,
