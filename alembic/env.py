@@ -5,6 +5,7 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import url as sa_url
 from dotenv import load_dotenv
 
 # Carrega variáveis do .env (mesma convenção do app)
@@ -16,9 +17,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Importa metadata do projeto
+# Importa metadata do projeto e a DATABASE_URL já normalizada
 os.environ.setdefault("SKIP_ASYNC_ENGINE", "1")
-from app.database import Base  # noqa: E402
+from app.database import Base, DATABASE_URL  # noqa: E402
 import app.models.auth_models  # noqa: F401,E402
 import app.models.diagnostico_models  # noqa: F401,E402
 
@@ -26,39 +27,16 @@ target_metadata = Base.metadata
 
 
 def get_database_url() -> str:
-    # Prioriza a variável DATABASE_URL, comum em serviços de hospedagem como o Render.
-    url = os.getenv("DATABASE_URL")
-    if url:
-        # Alembic usa driver síncrono.
-        if url.startswith("sqlite+aiosqlite"):
-            url = url.replace("sqlite+aiosqlite", "sqlite", 1)
-        # Garante que a URL é compatível com o driver síncrono do psycopg.
-        # Alembic roda de forma síncrona.
-        if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql+psycopg://", 1)
-        elif url.startswith("postgresql://") and "+psycopg" not in url:
-            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-        
-        # Se estiver usando a porta 6543 (Pooler do Supabase em modo de transação),
-        # precisamos desativar prepared statements para o psycopg3.
-        if ":6543" in url and "prepare_threshold=0" not in url:
-            separator = "&" if "?" in url else "?"
-            url += f"{separator}prepare_threshold=0"
-            
-        return url
-
-    # Fallback para o método antigo de montar a URL a partir de partes (para desenvolvimento local)
-    user = os.getenv("DB_USER")
-    password = os.getenv("DB_PASSWORD")
-    host = os.getenv("DB_HOST")
-    port = os.getenv("DB_PORT")
-    name = os.getenv("DB_NAME")
-
-    if not all([user, password, host, port, name]):
-        # Fallback local para SQLite quando variáveis não são informadas.
-        return "sqlite:///./dev.db"
-
-    return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"
+    """Retorna a URL do banco ajustada para o Alembic (síncrono)"""
+    url = DATABASE_URL
+    
+    # Se a URL for SQLite assíncrono, converte para síncrono
+    if url.startswith("sqlite+aiosqlite"):
+        return url.replace("sqlite+aiosqlite", "sqlite", 1)
+    
+    # Alembic usa o motor síncrono do psycopg3 (postgresql+psycopg)
+    # Nossa DATABASE_URL já está nesse formato ou similar.
+    return url
 
 
 def run_migrations_offline() -> None:
@@ -76,14 +54,22 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = get_database_url()
+    # Obtém a URL normalizada
+    db_url = get_database_url()
+    
+    # Configuração customizada para lidar com o Supabase Pooler no Alembic
+    connect_args = {}
+    parsed_url = sa_url.make_url(db_url)
+    if parsed_url.port == 6543:
+        # No psycopg3, prepare_threshold deve ser um inteiro
+        connect_args["prepare_threshold"] = 0
 
     connectable = engine_from_config(
-        configuration,
+        {"sqlalchemy.url": db_url},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         future=True,
+        connect_args=connect_args
     )
 
     with connectable.connect() as connection:
