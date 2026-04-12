@@ -11,7 +11,7 @@ load_dotenv()
 Base = declarative_base()
 
 def _build_database_url_from_parts() -> str | None:
-    """Monta a URL a partir de componentes individuais (Mais seguro contra caracteres especiais)"""
+    """Monta a URL a partir de componentes individuais"""
     user = os.getenv("DB_USER")
     password = os.getenv("DB_PASSWORD")
     host = os.getenv("DB_HOST")
@@ -24,12 +24,7 @@ def _build_database_url_from_parts() -> str | None:
     # Codifica a senha para evitar que caracteres como '@' quebrem a URL
     safe_password = urllib.parse.quote_plus(password)
     
-    # Supabase Pooler (6543) exige prepare_threshold=0
-    query = ""
-    if str(port) == "6543":
-        query = "?prepare_threshold=0"
-
-    return f"postgresql+psycopg://{user}:{safe_password}@{host}:{port}/{name}{query}"
+    return f"postgresql+psycopg://{user}:{safe_password}@{host}:{port}/{name}"
 
 def _normalize_database_url(url: str) -> str:
     """Normaliza uma URL completa vinda de string"""
@@ -53,12 +48,6 @@ def _normalize_database_url(url: str) -> str:
             return url
             
         updated = parsed.set(drivername=new_driver)
-        
-        if updated.port == 6543:
-            q = dict(updated.query)
-            q.setdefault("prepare_threshold", "0")
-            updated = updated.update_query_dict(q)
-            
         return str(updated)
     except:
         if url.startswith("postgres://"):
@@ -80,17 +69,24 @@ if not DATABASE_URL:
 if not DATABASE_URL:
     DATABASE_URL = "sqlite+aiosqlite:///./dev.db"
 
-# Log de segurança para conferência no Render
-try:
-    _p = make_url(DATABASE_URL)
-    print(f"INFO: DB_CONNECT -> User: {_p.username} | Host: {_p.host}:{_p.port} | Driver: {_p.drivername}", flush=True)
-except:
-    pass
-
+# Engine Configuration
 engine_kwargs = {
     "echo": False,
     "future": True,
+    "connect_args": {}
 }
+
+# Se for o Pooler do Supabase (porta 6543), configuramos prepare_threshold como INT
+# Isso evita o erro TypeError: '>=' not supported between instances of 'int' and 'str'
+try:
+    _url_obj = make_url(DATABASE_URL)
+    print(f"INFO: DB_CONNECT -> User: {_url_obj.username} | Host: {_url_obj.host}:{_url_obj.port}", flush=True)
+    
+    if _url_obj.port == 6543:
+        # No psycopg3, prepare_threshold deve ser um inteiro
+        engine_kwargs["connect_args"]["prepare_threshold"] = 0
+except:
+    pass
 
 if "sqlite" not in DATABASE_URL:
     engine_kwargs.update({
