@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from logging.config import fileConfig
+from urllib.parse import quote_plus
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -51,7 +52,7 @@ def get_database_url() -> str:
         # Fallback local para SQLite quando variáveis não são informadas.
         return "sqlite:///./dev.db"
 
-    return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"
+    return f"postgresql+psycopg://{quote_plus(user)}:{quote_plus(password)}@{host}:{port}/{name}"
 
 
 def run_migrations_offline() -> None:

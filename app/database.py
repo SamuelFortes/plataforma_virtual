@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,7 +30,7 @@ def _build_database_url_from_parts() -> str | None:
         return None
 
     return (
-        f"postgresql+psycopg://{database_user}:{database_password}"
+        f"postgresql+psycopg://{quote_plus(database_user)}:{quote_plus(database_password)}"
         f"@{database_host}:{database_port}/{database_name}"
     )
 
