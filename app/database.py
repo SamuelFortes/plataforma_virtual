@@ -62,6 +62,8 @@ if not DATABASE_URL.startswith("sqlite"):
         "max_overflow": 3,
         "pool_recycle": 1800,
         "pool_timeout": 10,
+        # Desabilita prepared statements para compatibilidade com PgBouncer transaction pooling
+        "connect_args": {"prepare_threshold": None},
     })
 
 engine = None
