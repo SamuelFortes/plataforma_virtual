@@ -2,7 +2,6 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.engine.url import make_url
 import os
-import sys
 import urllib.parse
 from dotenv import load_dotenv
 
@@ -23,7 +22,7 @@ def _build_database_url_from_parts() -> str | None:
 
     # Codifica a senha para evitar que caracteres como '@' quebrem a URL
     safe_password = urllib.parse.quote_plus(password)
-    
+
     return f"postgresql+psycopg://{user}:{safe_password}@{host}:{port}/{name}"
 
 def _normalize_database_url(url: str) -> str:
@@ -83,8 +82,7 @@ try:
     print(f"INFO: DB_CONNECT -> User: {_url_obj.username} | Host: {_url_obj.host}:{_url_obj.port}", flush=True)
     
     if _url_obj.port == 6543:
-        # No psycopg3, prepare_threshold deve ser um inteiro
-        engine_kwargs["connect_args"]["prepare_threshold"] = 0
+        engine_kwargs["connect_args"]["prepare_threshold"] = None
 except:
     pass
 

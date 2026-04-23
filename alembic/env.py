@@ -29,11 +29,11 @@ target_metadata = Base.metadata
 def get_database_url() -> str:
     """Retorna a URL do banco ajustada para o Alembic (síncrono)"""
     url = DATABASE_URL
-    
+
     # Se a URL for SQLite assíncrono, converte para síncrono
     if url.startswith("sqlite+aiosqlite"):
         return url.replace("sqlite+aiosqlite", "sqlite", 1)
-    
+
     # Alembic usa o motor síncrono do psycopg3 (postgresql+psycopg)
     # Nossa DATABASE_URL já está nesse formato ou similar.
     return url
@@ -61,8 +61,7 @@ def run_migrations_online() -> None:
     connect_args = {}
     parsed_url = sa_url.make_url(db_url)
     if parsed_url.port == 6543:
-        # No psycopg3, prepare_threshold deve ser um inteiro
-        connect_args["prepare_threshold"] = 0
+        connect_args["prepare_threshold"] = None
 
     connectable = engine_from_config(
         {"sqlalchemy.url": db_url},
