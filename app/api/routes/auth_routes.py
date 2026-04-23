@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Literal, List
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,13 @@ from sqlalchemy import select, func
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import re
+import os
+import secrets
+import json
+import hmac
+import hashlib
+import urllib.parse
+import httpx
 
 from app.database import get_db
 from app.models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest, Cargo
@@ -24,6 +32,30 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
+
+# Google OAuth
+_render_url = os.getenv("RENDER_EXTERNAL_URL", "")
+_BACKEND_URL = os.getenv("BACKEND_URL", _render_url or "http://localhost:8000")
+_FRONTEND_URL = os.getenv("FRONTEND_URL", _render_url or "http://localhost:5173")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = f"{_BACKEND_URL}/api/auth/google/callback"
+_OAUTH_STATE_SECRET = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+
+
+def _generate_oauth_state() -> str:
+    random_part = secrets.token_urlsafe(16)
+    sig = hmac.new(_OAUTH_STATE_SECRET.encode(), random_part.encode(), hashlib.sha256).hexdigest()
+    return f"{random_part}.{sig}"
+
+
+def _verify_oauth_state(state: str) -> bool:
+    try:
+        random_part, sig = state.rsplit(".", 1)
+        expected = hmac.new(_OAUTH_STATE_SECRET.encode(), random_part.encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, sig)
+    except Exception:
+        return False
 
 class UsuarioCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
@@ -135,7 +167,7 @@ class UsuarioOut(BaseModel):
     id: int
     nome: str
     email: EmailStr
-    cpf: str
+    cpf: str | None = None
     is_profissional: bool
     role: str
     cargo: str | None = None
@@ -677,6 +709,125 @@ async def confirm_welcome_email_sent(
     await db.commit()
 
     return {"message": "Status de boas-vindas atualizado"}
+
+
+# ─── Google OAuth ────────────────────────────────────────────────────
+
+@auth_router.get("/google/login")
+async def google_login():
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Login com Google não configurado")
+
+    state = _generate_oauth_state()
+    params = urllib.parse.urlencode({
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+    })
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
+
+
+@auth_router.get("/google/callback")
+async def google_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    if error or not code or not state:
+        return RedirectResponse(f"{_FRONTEND_URL}/login?error=login_cancelado")
+
+    if not _verify_oauth_state(state):
+        return RedirectResponse(f"{_FRONTEND_URL}/login?error=estado_invalido")
+
+    async with httpx.AsyncClient() as client:
+        token_resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uri": GOOGLE_REDIRECT_URI,
+                "grant_type": "authorization_code",
+            },
+        )
+        if token_resp.status_code != 200:
+            return RedirectResponse(f"{_FRONTEND_URL}/login?error=falha_google")
+
+        google_token = token_resp.json().get("access_token")
+        if not google_token:
+            return RedirectResponse(f"{_FRONTEND_URL}/login?error=falha_google")
+
+        user_resp = await client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {google_token}"},
+        )
+        if user_resp.status_code != 200:
+            return RedirectResponse(f"{_FRONTEND_URL}/login?error=falha_google")
+
+        google_user = user_resp.json()
+
+    email = google_user.get("email")
+    nome = google_user.get("name") or (email.split("@")[0] if email else "Usuário")
+
+    if not email:
+        return RedirectResponse(f"{_FRONTEND_URL}/login?error=email_nao_fornecido")
+
+    resultado = await db.execute(select(Usuario).where(Usuario.email == email))
+    usuario = resultado.scalar_one_or_none()
+
+    if not usuario:
+        usuario = Usuario(
+            nome=nome,
+            email=email,
+            senha=hash_password(secrets.token_hex(32)),
+            cpf=None,
+            role="USER",
+            ativo=True,
+            welcome_email_sent=False,
+        )
+        db.add(usuario)
+        await db.commit()
+        await db.refresh(usuario)
+
+    if not usuario.ativo:
+        return RedirectResponse(f"{_FRONTEND_URL}/login?error=conta_inativa")
+
+    role = (usuario.role or "USER").upper()
+    resultado_prof = await db.execute(
+        select(ProfissionalUbs).where(
+            ProfissionalUbs.usuario_id == usuario.id,
+            ProfissionalUbs.ativo == True,
+        )
+    )
+    is_profissional = role in ("PROFISSIONAL", "GESTOR") or resultado_prof.scalar_one_or_none() is not None
+
+    token = create_access_token(
+        data={
+            "sub": str(usuario.id),
+            "email": usuario.email,
+            "is_profissional": is_profissional,
+            "role": role,
+            "cargo": usuario.cargo,
+        }
+    )
+
+    user_data = urllib.parse.quote(json.dumps({
+        "id": usuario.id,
+        "nome": usuario.nome,
+        "email": usuario.email,
+        "cpf": usuario.cpf,
+        "is_profissional": is_profissional,
+        "role": role,
+        "cargo": usuario.cargo,
+    }))
+
+    return RedirectResponse(
+        f"{_FRONTEND_URL}/auth/callback?token={urllib.parse.quote(token)}&user={user_data}"
+    )
 
 
 # ─── CRUD de Cargos ──────────────────────────────────────────────────

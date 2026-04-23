@@ -8,7 +8,7 @@ class Usuario(Base):
     nome = Column(String(100), nullable=False)
     email = Column(String(200), nullable=False, unique=True)
     senha = Column(String(255), nullable=False)
-    cpf = Column(String(14), nullable=False, unique=True)
+    cpf = Column(String(14), nullable=True, unique=True)
     # USER | PROFISSIONAL | GESTOR
     role = Column(String(20), nullable=False, default="USER")
     cargo = Column(String(100), nullable=True)
