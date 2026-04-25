@@ -73,3 +73,8 @@ pgdata/
 # Uploads (anexos)
 uploads/
 frontend-react/package-lock.json
+
+# Certificados SSL Locais (mkcert) e Executáveis
+*.pem
+*.key
+mkcert.exe

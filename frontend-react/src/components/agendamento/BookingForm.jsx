@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { agendamentoService } from '../../services/agendamentoService';
 import { ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
+const HORARIOS = (() => {
+  const slots = [];
+  for (let h = 7; h <= 17; h++) {
+    for (let m = 0; m < 60; m += 20) {
+      if (h === 17 && m > 0) break;
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    }
+  }
+  return slots;
+})();
+
 const BookingForm = ({ onSuccess, onCancel, initialData = null, title = "Agendar Nova Consulta", submitLabel = "Confirmar Agendamento" }) => {
   const [profissionais, setProfissionais] = useState([]);
   const [especialidades, setEspecialidades] = useState([]);
@@ -204,14 +215,18 @@ const BookingForm = ({ onSuccess, onCancel, initialData = null, title = "Agendar
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Hora</label>
-            <input
-              type="time"
+            <select
               name="hora"
               value={formData.hora}
               onChange={handleChange}
-              className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-lg"
               required
-            />
+            >
+              <option value="">Selecione um horário</option>
+              {HORARIOS.map(h => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 
 Este projeto é uma plataforma para gestão e diagnóstico de Unidades Básicas de Saúde (UBS), permitindo a coleta de dados situacionais, solicitações profissionais e agendamentos.
 
-Nota: README atualizado para registrar estabilidade da branch atual.
+Nota: README atualizado para registrar estabilidade da branch atual e configurações de ambiente de desenvolvimento seguro.
 
 ## 🚀 Como Executar o Projeto Localmente
 
@@ -14,6 +14,7 @@ Antes de começar, você precisará ter instalado:
 - [Python 3.10+](https://www.python.org/downloads/)
 - [Node.js (LTS)](https://nodejs.org/)
 - [Git](https://git-scm.com/)
+- [mkcert](https://github.com/FiloSottile/mkcert/releases) (Para gerar certificados locais HTTPS)
 
 ---
 
@@ -23,21 +24,21 @@ O backend é construído com FastAPI e utiliza SQLite por padrão para desenvolv
 
 1.  **Clone o repositório:**
     ```bash
-    git clone https://github.com/cocaioo/plataforma_virtual.git
+    git clone [https://github.com/cocaioo/plataforma_virtual.git](https://github.com/cocaioo/plataforma_virtual.git)
     cd plataforma_virtual
     ```
 
 2.  **Crie e ative um ambiente virtual:**
-    *   **Windows:**
-        ```bash
-        python -m venv venv
-        .\venv\Scripts\activate
-        ```
-    *   **Linux/Mac:**
-        ```bash
-        python3 -m venv venv
-        source venv/bin/activate
-        ```
+    * **Windows (PowerShell):**
+      ```powershell
+      python -m venv venv
+      .\venv\Scripts\Activate.ps1
+      ```
+    * **Linux / Mac:**
+      ```bash
+      python3 -m venv venv
+      source venv/bin/activate
+      ```
 
 3.  **Instale as dependências:**
     ```bash
@@ -47,7 +48,7 @@ O backend é construído com FastAPI e utiliza SQLite por padrão para desenvolv
 4.  **Inicialize o Banco de Dados:**
     Este comando criará o arquivo `dev.db` (SQLite) e populará as tabelas iniciais.
     ```bash
-    python scripts/creates/create_tables.py
+    python -m scripts.creates.create_tables
     ```
 
 5.  **Inicie o servidor:**
@@ -73,15 +74,52 @@ O frontend é construído com React + Vite.
     npm install
     ```
 
-3.  **Inicie o servidor de desenvolvimento:**
+---
+
+### 🔐 3. Configuração de Login Social (Google OAuth no Localhost)
+
+Como o Login da Google exige HTTPS e a correspondência exata de domínios, você deve configurar o seu ambiente local para usar o domínio de desenvolvimento (`duckdns.org`) com um certificado de segurança válido. **Cada desenvolvedor deve realizar este processo em sua própria máquina.**
+
+1.  **Configurar o Arquivo Hosts (Windows):**
+    * Abra o **Bloco de Notas** como Administrador.
+    * Abra o arquivo: `C:\Windows\System32\drivers\etc\hosts`.
+    * Adicione a seguinte linha no final do arquivo (Não apague outras configurações existentes):
+      ```text
+      127.0.0.1   plataforma-virtual-local.duckdns.org
+      ```
+    * Salve o arquivo e rode `ipconfig /flushdns` no PowerShell para limpar o cache.
+
+2.  **Gerar Certificados SSL Locais:**
+    * Com o `mkcert` instalado na sua máquina, abra o terminal na pasta raiz do projeto.
+    * Instale a autoridade certificadora na sua máquina (clique em "Sim" se o Windows perguntar):
+      ```powershell
+      mkcert -install
+      ```
+    * Gere os certificados direcionando-os para dentro da pasta do frontend:
+      ```powershell
+      cd frontend-react
+      mkcert plataforma-virtual-local.duckdns.org localhost 127.0.0.1
+      ```
+    * *Nota:* O arquivo `.gitignore` já está configurado para ignorar os arquivos `*.pem`, garantindo que chaves privadas não subam para o repositório.
+
+3.  **Ajustar as Variáveis de Ambiente (`.env`):**
+    Certifique-se de que o seu `.env` do backend possua as URLs corretas utilizando `https://` e o domínio virtual:
+    ```env
+    FRONTEND_URL=[https://plataforma-virtual-local.duckdns.org:5173](https://plataforma-virtual-local.duckdns.org:5173)
+    BACKEND_URL=[https://plataforma-virtual-local.duckdns.org:8000](https://plataforma-virtual-local.duckdns.org:8000)
+    GOOGLE_REDIRECT_URI=[https://plataforma-virtual-local.duckdns.org:5173/api/auth/google/callback](https://plataforma-virtual-local.duckdns.org:5173/api/auth/google/callback)
+    ```
+
+4.  **Inicie o servidor de desenvolvimento:**
+    Na pasta `frontend-react`, execute:
     ```bash
     npm run dev
     ```
-    O frontend estará disponível em `http://localhost:5173`.
+    > **Atenção:** Para testar o login corretamente, acesse a aplicação **exclusivamente** pela URL segura: `https://plataforma-virtual-local.duckdns.org:5173/` (Não utilize `localhost`).
 
 ---
 
-### 📦 3. Build de Produção (Opcional)
+### 📦 4. Build de Produção (Opcional)
 
 Se desejar rodar o projeto de forma integrada (o servidor FastAPI servindo o frontend já compilado):
 
@@ -104,38 +142,4 @@ Este script cria um usuário administrador padrão ou promove um usuário existe
 
 1. Execute o script na raiz do projeto:
    ```bash
-    python scripts/creates/create_admin.py
-   ```
-2. O usuário padrão será:
-   - **Login:** `admin@example.com`
-   - **Senha:** `Password123`
-
-### Opção B: Via SQL (Manual)
-Se preferir usar seu próprio cadastro feito pelo frontend:
-
-1. Registre-se normalmente.
-2. Acesse o banco de dados SQLite (`dev.db`) usando uma ferramenta como [DBeaver](https://dbeaver.io/) ou o comando `sqlite3`.
-3. Execute o seguinte SQL:
-   ```sql
-   UPDATE usuarios SET role = 'GESTOR' WHERE email = 'seu-email@exemplo.com';
-   ```
-
-## 🛠️ Estrutura do Projeto
-
-- `app/`: Backend FastAPI (API, modelos, schemas, services e utils).
-- `main.py`: Entry point que expõe `app` do backend.
-- `scripts/`: Scripts auxiliares (seed, criação de usuários, inspeção).
-- `docs/`: Documentação técnica e scripts SQL.
-- `frontend-react/`: Código fonte da aplicação web.
-- `alembic/`: Migrações do banco de dados (usado principalmente em produção).
-
-## 📝 Notas Importantes
-
-- **Usuários de Teste (Seed Data):** Para facilitar a validação das permissões (RBAC) em ambiente de teste ou produção, você pode utilizar os seguintes usuários padrão (Senha única: `Plataforma123`):
-  - **Paciente (USER):** `teste.paciente@plataforma.com`
-  - **Gestor (GESTOR):** `teste.gestor@plataforma.com`
-  - **Recepção (RECEPCAO):** `recepcao@plataforma.com`
-- **Banco de Dados:** Por padrão, o projeto usa SQLite localmente. Para usar PostgreSQL, configure a variável de ambiente `DATABASE_URL` no arquivo `.env`.
-- **CORS:** A API está configurada para aceitar requisições de `http://localhost:5173` por padrão.
-- **Relatórios:** A geração de relatórios PDF utiliza a biblioteca `reportlab`.
-
+    python -m scripts.creates.create_admin

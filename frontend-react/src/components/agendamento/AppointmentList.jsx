@@ -15,61 +15,113 @@ const AppointmentList = ({ appointments, onCancel, onReschedule, showActions = t
     return <p className="text-gray-500 dark:text-slate-400 text-center py-4">Nenhum agendamento encontrado.</p>;
   }
 
+  const canAct = (status) => ['AGENDADO', 'REAGENDADO'].includes(status);
+
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm rounded-lg">
-        <thead className="bg-gray-50 dark:bg-slate-800">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Data/Hora</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Profissional</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Observações</th>
-            {showActions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Ações</th>}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-          {appointments.map((apt) => (
-            <tr key={apt.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                {new Date(apt.data_hora).toLocaleString('pt-BR')}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
-                <div className="font-medium">{apt.nome_profissional || 'N/A'}</div>
-                <div className="text-xs text-gray-500 dark:text-slate-400">{apt.cargo_profissional}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(apt.status)}`}>
-                  {apt.status}
-                </span>
-              </td>
-              <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400 max-w-xs truncate">
-                {apt.observacoes || '-'}
-              </td>
-              {showActions && (
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  {['AGENDADO', 'REAGENDADO'].includes(apt.status) && (
-                    <>
-                      <button
-                        onClick={() => onReschedule(apt)}
-                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-4"
-                      >
-                        Reagendar
-                      </button>
-                      <button
-                        onClick={() => onCancel(apt.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                      >
-                        Cancelar
-                      </button>
-                    </>
-                  )}
-                </td>
-              )}
+    <>
+      {/* Mobile: cards */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {appointments.map((apt) => (
+          <div
+            key={apt.id}
+            className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-sm p-4"
+          >
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {apt.nome_profissional || 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">{apt.cargo_profissional}</p>
+              </div>
+              <span className={`px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusColor(apt.status)}`}>
+                {apt.status}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-700 dark:text-slate-300 mb-1">
+              {new Date(apt.data_hora).toLocaleString('pt-BR')}
+            </p>
+
+            {apt.observacoes && (
+              <p className="text-xs text-gray-500 dark:text-slate-400 mb-3 line-clamp-2">{apt.observacoes}</p>
+            )}
+
+            {showActions && canAct(apt.status) && (
+              <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-slate-700">
+                <button
+                  onClick={() => onReschedule(apt)}
+                  className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium"
+                >
+                  Reagendar
+                </button>
+                <button
+                  onClick={() => onCancel(apt.id)}
+                  className="text-sm text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 font-medium"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="min-w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-sm rounded-lg">
+          <thead className="bg-gray-50 dark:bg-slate-800">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Data/Hora</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Profissional</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Observações</th>
+              {showActions && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Ações</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+            {appointments.map((apt) => (
+              <tr key={apt.id} className="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  {new Date(apt.data_hora).toLocaleString('pt-BR')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-slate-300">
+                  <div className="font-medium">{apt.nome_profissional || 'N/A'}</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-400">{apt.cargo_profissional}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(apt.status)}`}>
+                    {apt.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400 max-w-xs truncate">
+                  {apt.observacoes || '-'}
+                </td>
+                {showActions && (
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {canAct(apt.status) && (
+                      <>
+                        <button
+                          onClick={() => onReschedule(apt)}
+                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-4"
+                        >
+                          Reagendar
+                        </button>
+                        <button
+                          onClick={() => onCancel(apt.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    )}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 };
 

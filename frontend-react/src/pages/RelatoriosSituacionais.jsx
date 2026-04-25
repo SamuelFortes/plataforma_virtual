@@ -112,6 +112,7 @@ const IndicatorsSection = ({ ubsId, initialData, onUpdate }) => {
         { value: "ABSOLUTO", label: "Absoluto", help: "Use valores absolutos (ex.: total de atendimentos).", suffix: "" },
         { value: "POR_1000", label: "Por 1000 habitantes", help: "Use taxa por 1000 habitantes.", suffix: " / 1000 hab." },
     ];
+    const [showPresets, setShowPresets] = useState(false);
     const [formData, setFormData] = useState({
         nome_indicador: '',
         valor: '',
@@ -197,28 +198,39 @@ const IndicatorsSection = ({ ubsId, initialData, onUpdate }) => {
             </div>
 
             <div className="p-4 border rounded-md bg-green-50 dark:bg-green-900/20 dark:border-green-800">
-                <h4 className="font-bold text-green-900 dark:text-green-300 mb-4 text-sm uppercase">Adicionar ou atualizar indicador</h4>
-                <div className="mb-6 space-y-4">
-                    {indicatorPresetGroups.map(group => (
-                        <div key={group.title}>
-                            <p className="text-xs font-semibold text-green-800 dark:text-green-400 uppercase tracking-wide">{group.title}</p>
-                            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {group.items.map(item => (
-                                    <div key={item.name} className="rounded-md border border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 p-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setFormData(p => ({ ...p, nome_indicador: item.name }))}
-                                            className="text-xs font-semibold text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
-                                        >
-                                            {item.name}
-                                        </button>
-                                        <p className="text-[11px] text-green-700/80 dark:text-green-500 mt-1">{item.desc}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-green-900 dark:text-green-300 text-sm uppercase">Adicionar ou atualizar indicador</h4>
+                    <button
+                        type="button"
+                        onClick={() => setShowPresets(p => !p)}
+                        className="text-xs text-green-700 dark:text-green-400 underline hover:no-underline"
+                    >
+                        {showPresets ? 'Ocultar atalhos' : 'Saiba mais: atalhos de indicadores'}
+                    </button>
                 </div>
+                {showPresets && (
+                    <div className="mb-6 space-y-4">
+                        {indicatorPresetGroups.map(group => (
+                            <div key={group.title}>
+                                <p className="text-xs font-semibold text-green-800 dark:text-green-400 uppercase tracking-wide">{group.title}</p>
+                                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {group.items.map(item => (
+                                        <div key={item.name} className="rounded-md border border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 p-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, nome_indicador: item.name }))}
+                                                className="text-xs font-semibold text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
+                                            >
+                                                {item.name}
+                                            </button>
+                                            <p className="text-[11px] text-green-700/80 dark:text-green-500 mt-1">{item.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
                 <form onSubmit={handleAdd}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <InputField
@@ -941,6 +953,26 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
 
                     <div className={isLocked ? 'opacity-60 pointer-events-none' : ''}>
                     
+                    <SectionCard title="Informações gerais da UBS" subtitle="Preencha os dados da unidade. Nome, CNES e Área de atuação são obrigatórios para salvar o rascunho.">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <InputField label="Nome da UBS" name="nome_ubs" value={generalData?.nome_ubs} onChange={handleGeneralChange} required placeholder="ESF 18 – Adalto Pereira Saraçayo" />
+                            <InputField label="CNES" name="cnes" value={generalData?.cnes} onChange={handleGeneralChange} required placeholder="0000000" />
+                            <InputField label="Área de atuação (bairros/localidades)" name="area_atuacao" value={generalData?.area_atuacao} onChange={handleGeneralChange} required placeholder="Ex.: Alto São Pedro, Nova Alvorada, Centro" />
+                            <InputField label="Número de habitantes ativos" name="numero_habitantes_ativos" type="number" value={generalData?.numero_habitantes_ativos} onChange={handleGeneralChange} required placeholder="Ex.: 4.800" />
+                            <InputField label="Número de microáreas" name="numero_microareas" type="number" value={generalData?.numero_microareas} onChange={handleGeneralChange} required placeholder="Ex.: 8" />
+                            <InputField label="Número de famílias cadastradas" name="numero_familias_cadastradas" type="number" value={generalData?.numero_familias_cadastradas} onChange={handleGeneralChange} required placeholder="Ex.: 1.000" />
+                            <InputField label="Número de domicílios" name="numero_domicilios" type="number" value={generalData?.numero_domicilios} onChange={handleGeneralChange} required placeholder="Ex.: 2.000" />
+                            <InputField label="Domicílios rurais" name="domicilios_rurais" type="number" value={generalData?.domicilios_rurais} onChange={handleGeneralChange} placeholder="Ex.: 15" />
+                            <InputField label="Data de inauguração" name="data_inauguracao" type="date" value={generalData?.data_inauguracao} onChange={handleGeneralChange} />
+                            <InputField label="Data da última reforma" name="data_ultima_reforma" type="date" value={generalData?.data_ultima_reforma} onChange={handleGeneralChange} />
+                            <InputField label="Gestão / modelo de atenção" name="gestao_modelo_atencao" value={generalData?.gestao_modelo_atencao} onChange={handleGeneralChange} placeholder="Ex.: ESF, UBS tradicional, mista" />
+                        </div>
+                        <div className="mt-4">
+                            <TextAreaField label="Descritivos gerais" name="descritivos_gerais" value={generalData?.descritivos_gerais} onChange={handleGeneralChange} placeholder="Perfil de referência – por exemplo, população prioritária, localização estratégica, entre outros." />
+                            <TextAreaField label="Observações gerais" name="observacoes_gerais" value={generalData?.observacoes_gerais} onChange={handleGeneralChange} placeholder="Informações adicionais sobre a UBS, histórico, mudanças recentes na área de abrangência e projetos em andamento." />
+                        </div>
+                    </SectionCard>
+
                     <SectionCard title="Identificação do relatório" subtitle="Defina um nome para este relatório situacional, para facilitar a identificação na lista de rascunhos e relatórios finalizados.">
                         <InputField label="Nome do relatório" name="nome_relatorio" value={generalData?.nome_relatorio} onChange={handleGeneralChange} required placeholder="Ex.: Diagnóstico Situacional UBS Adalto Pereira Saraçayo - 2025" />
                     </SectionCard>
@@ -965,26 +997,6 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                         onFieldChange={handleGeneralChange}
                         onSave={handleSaveCronogramas}
                     />
-
-                    <SectionCard title="Informações gerais da UBS">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <InputField label="Nome da UBS" name="nome_ubs" value={generalData?.nome_ubs} onChange={handleGeneralChange} required placeholder="ESF 18 – Adalto Pereira Saraçayo" />
-                            <InputField label="CNES" name="cnes" value={generalData?.cnes} onChange={handleGeneralChange} required placeholder="0000000" />
-                            <InputField label="Área de atuação (bairros/localidades)" name="area_atuacao" value={generalData?.area_atuacao} onChange={handleGeneralChange} required placeholder="Ex.: Alto São Pedro, Nova Alvorada, Centro" />
-                            <InputField label="Número de habitantes ativos" name="numero_habitantes_ativos" type="number" value={generalData?.numero_habitantes_ativos} onChange={handleGeneralChange} required placeholder="Ex.: 4.800" />
-                            <InputField label="Número de microáreas" name="numero_microareas" type="number" value={generalData?.numero_microareas} onChange={handleGeneralChange} required placeholder="Ex.: 8" />
-                            <InputField label="Número de famílias cadastradas" name="numero_familias_cadastradas" type="number" value={generalData?.numero_familias_cadastradas} onChange={handleGeneralChange} required placeholder="Ex.: 1.000" />
-                            <InputField label="Número de domicílios" name="numero_domicilios" type="number" value={generalData?.numero_domicilios} onChange={handleGeneralChange} required placeholder="Ex.: 2.000" />
-                            <InputField label="Domicílios rurais" name="domicilios_rurais" type="number" value={generalData?.domicilios_rurais} onChange={handleGeneralChange} placeholder="Ex.: 15" />
-                            <InputField label="Data de inauguração" name="data_inauguracao" type="date" value={generalData?.data_inauguracao} onChange={handleGeneralChange} />
-                            <InputField label="Data da última reforma" name="data_ultima_reforma" type="date" value={generalData?.data_ultima_reforma} onChange={handleGeneralChange} />
-                            <InputField label="Gestão / modelo de atenção" name="gestao_modelo_atencao" value={generalData?.gestao_modelo_atencao} onChange={handleGeneralChange} placeholder="Ex.: ESF, UBS tradicional, mista" />
-                        </div>
-                        <div className="mt-4">
-                            <TextAreaField label="Descritivos gerais" name="descritivos_gerais" value={generalData?.descritivos_gerais} onChange={handleGeneralChange} placeholder="Perfil de referência – por exemplo, população prioritária, localização estratégica, entre outros." />
-                            <TextAreaField label="Observações gerais" name="observacoes_gerais" value={generalData?.observacoes_gerais} onChange={handleGeneralChange} placeholder="Informações adicionais sobre a UBS, histórico, mudanças recentes na área de abrangência e projetos em andamento." />
-                        </div>
-                    </SectionCard>
 
                     <SectionCard title="Serviços oferecidos pela UBS" subtitle="Marque os serviços que a UBS oferece diretamente à população.">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -1027,6 +1039,17 @@ const FullReportModal = ({ isOpen, onClose, reportId, onRefresh, ubsInfo }) => {
                             <div className="flex justify-end">
                                 <button onClick={() => handleSectionPut('territory', reportData?.territory || { descricao_territorio: '', potencialidades_territorio: '', riscos_vulnerabilidades: '' })} className="bg-cyan-700 text-white px-6 py-2 rounded font-bold hover:bg-cyan-800">Salvar seção</button>
                             </div>
+                        </div>
+                    </SectionCard>
+
+                    <SectionCard title="Fotos e registros de infraestrutura" subtitle="Registros fotográficos de problemas e condições da UBS, relacionados às vulnerabilidades identificadas acima." disabled={!id} lockedMessage="Salve o rascunho para habilitar">
+                        <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-gray-200 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-800/50">
+                            <svg className="w-10 h-10 text-gray-300 dark:text-slate-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Upload de fotos em desenvolvimento</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 max-w-xs">Em breve será possível anexar fotos diretamente ao relatório. Por enquanto, descreva os problemas de infraestrutura na seção abaixo.</p>
                         </div>
                     </SectionCard>
 
