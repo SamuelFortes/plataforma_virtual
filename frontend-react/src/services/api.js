@@ -1,6 +1,4 @@
-const BASE_API = import.meta.env.PROD
-  ? "/api"
-  : import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const BASE_API = import.meta.env.VITE_API_BASE_URL || "/api";
 console.log("[API] Inicializado com BASE_API:", BASE_API);
 
 // Utilidades de autenticação: token JWT e usuário atual
