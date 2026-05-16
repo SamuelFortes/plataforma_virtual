@@ -14,8 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.alter_column("usuarios", "cpf", nullable=True)
+    with op.batch_alter_table("usuarios") as batch_op:
+        batch_op.alter_column("cpf", nullable=True)
 
 
 def downgrade() -> None:
-    op.alter_column("usuarios", "cpf", nullable=False)
+    with op.batch_alter_table("usuarios") as batch_op:
+        batch_op.alter_column("cpf", nullable=False)
