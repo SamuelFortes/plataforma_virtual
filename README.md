@@ -78,44 +78,108 @@ O frontend é construído com React + Vite.
 
 ### 🔐 3. Configuração de Login Social (Google OAuth no Localhost)
 
-Como o Login da Google exige HTTPS e a correspondência exata de domínios, você deve configurar o seu ambiente local para usar o domínio de desenvolvimento (`duckdns.org`) com um certificado de segurança válido. **Cada desenvolvedor deve realizar este processo em sua própria máquina.**
+O Google exige HTTPS e domínio exato correspondente ao cadastrado no Google Cloud Console. A solução adotada é usar o domínio `plataforma-virtual-local.duckdns.org` apontando para `127.0.0.1` com um certificado local gerado pelo `mkcert`. **Cada desenvolvedor deve realizar este processo em sua própria máquina.**
 
-1.  **Configurar o Arquivo Hosts (Windows):**
-    * Abra o **Bloco de Notas** como Administrador.
-    * Abra o arquivo: `C:\Windows\System32\drivers\etc\hosts`.
-    * Adicione a seguinte linha no final do arquivo (Não apague outras configurações existentes):
-      ```text
-      127.0.0.1   plataforma-virtual-local.duckdns.org
-      ```
-    * Salve o arquivo e rode `ipconfig /flushdns` no PowerShell para limpar o cache.
+> Os passos 3.1 e 3.2 exigem um terminal com **privilégios de Administrador**.
 
-2.  **Gerar Certificados SSL Locais:**
-    * Com o `mkcert` instalado na sua máquina, abra o terminal na pasta raiz do projeto.
-    * Instale a autoridade certificadora na sua máquina (clique em "Sim" se o Windows perguntar):
-      ```powershell
-      mkcert -install
-      ```
-    * Gere os certificados direcionando-os para dentro da pasta do frontend:
-      ```powershell
-      cd frontend-react
-      mkcert plataforma-virtual-local.duckdns.org localhost 127.0.0.1
-      ```
-    * *Nota:* O arquivo `.gitignore` já está configurado para ignorar os arquivos `*.pem`, garantindo que chaves privadas não subam para o repositório.
+#### 3.1. Instalar o mkcert (terminal como Administrador)
 
-3.  **Ajustar as Variáveis de Ambiente (`.env`):**
-    Certifique-se de que o seu `.env` do backend possua as URLs corretas utilizando `https://` e o domínio virtual:
-    ```env
-    FRONTEND_URL=[https://plataforma-virtual-local.duckdns.org:5173](https://plataforma-virtual-local.duckdns.org:5173)
-    BACKEND_URL=[https://plataforma-virtual-local.duckdns.org:8000](https://plataforma-virtual-local.duckdns.org:8000)
-    GOOGLE_REDIRECT_URI=[https://plataforma-virtual-local.duckdns.org:5173/api/auth/google/callback](https://plataforma-virtual-local.duckdns.org:5173/api/auth/google/callback)
-    ```
+Via **winget** (já vem instalado no Windows 10/11 — recomendado):
+```powershell
+winget install FiloSottile.mkcert
+```
 
-4.  **Inicie o servidor de desenvolvimento:**
-    Na pasta `frontend-react`, execute:
-    ```bash
-    npm run dev
-    ```
-    > **Atenção:** Para testar o login corretamente, acesse a aplicação **exclusivamente** pela URL segura: `https://plataforma-virtual-local.duckdns.org:5173/` (Não utilize `localhost`).
+Ou via **Chocolatey** (se já tiver instalado):
+```powershell
+choco install mkcert -y
+```
+
+> Para instalar o Chocolatey: `Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))`
+
+> Após instalar, feche e reabra o terminal de Administrador antes de continuar.
+
+#### 3.2. Configurar o arquivo Hosts e instalar a CA (terminal como Administrador)
+
+```powershell
+# Adiciona o domínio local apontando para 127.0.0.1
+Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value "127.0.0.1`tplataforma-virtual-local.duckdns.org"
+
+# Limpa o cache DNS
+ipconfig /flushdns
+
+# Instala a autoridade certificadora do mkcert no store do Windows
+# (o Chrome e o Edge passarão a confiar nos certificados gerados)
+mkcert -install
+```
+
+#### 3.3. Gerar os certificados SSL (terminal normal, na raiz do projeto)
+
+```powershell
+cd frontend-react
+mkcert plataforma-virtual-local.duckdns.org localhost 127.0.0.1
+```
+
+Isso cria dois arquivos dentro de `frontend-react/`:
+- `plataforma-virtual-local.duckdns.org+2.pem` (certificado)
+- `plataforma-virtual-local.duckdns.org+2-key.pem` (chave privada)
+
+O `vite.config.js` já está configurado para ler esses arquivos. O `.gitignore` impede que eles subam para o repositório.
+
+#### 3.4. Criar o arquivo `.env` na raiz do projeto
+
+Crie o arquivo `.env` com o conteúdo abaixo. As credenciais do Google (`GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`) devem ser obtidas com outro membro da equipe ou no painel do Render:
+
+```env
+# Google OAuth — solicite os valores ao responsável pelo projeto
+GOOGLE_CLIENT_ID=COLE_AQUI_SEU_CLIENT_ID
+GOOGLE_CLIENT_SECRET=COLE_AQUI_SEU_CLIENT_SECRET
+
+# JWT
+JWT_SECRET_KEY=gere-uma-chave-segura-com-python-secrets-token-hex-32
+JWT_EXPIRE_MINUTES=60
+
+# URLs
+# O backend continua em HTTP internamente; o Vite faz proxy de /api → localhost:8000
+BACKEND_URL=http://localhost:8000
+FRONTEND_URL=https://plataforma-virtual-local.duckdns.org:5173
+
+# URI de callback registrada no Google Cloud Console
+# Roteada pelo proxy do Vite — não é necessário SSL no backend
+GOOGLE_REDIRECT_URI=https://plataforma-virtual-local.duckdns.org:5173/api/auth/google/callback
+```
+
+> Para gerar um `JWT_SECRET_KEY` seguro, rode: `python -c "import secrets; print(secrets.token_hex(32))"`
+
+#### 3.5. Iniciar backend e frontend
+
+```powershell
+# Terminal 1 — Backend (na raiz do projeto, com o venv ativado)
+uvicorn main:app --reload
+
+# Terminal 2 — Frontend
+cd frontend-react
+npm run dev
+```
+
+Acesse a aplicação **exclusivamente** pela URL segura:
+```
+https://plataforma-virtual-local.duckdns.org:5173/
+```
+
+> Não use `https://localhost:5173/` para testar o login com Google — o Google só aceita o domínio exato cadastrado no Cloud Console.
+
+#### Como o fluxo OAuth funciona localmente
+
+```
+1. Usuário clica em "Entrar com Google"
+2. Backend redireciona para accounts.google.com com redirect_uri = :5173/api/auth/google/callback
+3. Google autentica e redireciona de volta para :5173/api/auth/google/callback
+4. Vite intercepta /api/* e faz proxy para http://localhost:8000/api/auth/google/callback
+5. Backend troca o código por token, busca dados do usuário e redireciona para :5173/auth/callback?token=...
+6. Frontend armazena o token e redireciona para a home
+```
+
+O backend permanece em HTTP puro — apenas o Vite dev server expõe HTTPS.
 
 ---
 
