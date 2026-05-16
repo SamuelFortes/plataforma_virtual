@@ -19,7 +19,7 @@ const CardGrid = () => {
 
   const allCards = [
     {
-      title: 'Gerenciar Relatórios Situacionais',
+      title: 'Relatórios Situacionais',
       to: '/relatorios-situacionais',
       icon: DocumentTextIcon,
       inDevelopment: false,
@@ -38,21 +38,6 @@ const CardGrid = () => {
       icon: LifebuoyIcon,
       inDevelopment: false,
       allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
-    },
-    {
-      title: 'Mapa de problemas e intervenções',
-      to: '/mapa-problemas-intervencoes',
-      icon: ChartBarIcon,
-      inDevelopment: false,
-      allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
-    },
-    {
-      title: 'Gestão de Equipes e Microáreas',
-      to: '/gestao-equipes',
-      icon: UserGroupIcon,
-      inDevelopment: false,
-      allowed: ['GESTOR'],
-      allowedCargos: ['Recepcionista']
     },
   ];
 

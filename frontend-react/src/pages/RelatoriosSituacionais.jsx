@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useDebounce } from '../hooks/useDebounce';
 import { useNotifications } from '../components/ui/Notifications';
 import { ubsService } from '../services/ubsService';
-import { 
-    PencilSquareIcon, 
-    TrashIcon, 
+import {
+    PencilSquareIcon,
+    TrashIcon,
     DocumentArrowDownIcon,
-    PlusIcon
+    PlusIcon,
+    ChartBarIcon,
+    UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 // --- COMPONENTES VISUAIS ---
@@ -1200,7 +1203,37 @@ const RelatoriosSituacionais = () => {
                     )}
         </div>
 
-                <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 px-5 py-4 shadow-sm rise-fade stagger-3">
+                <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 rise-fade stagger-3">
+                    <Link
+                        to="/mapa-problemas-intervencoes"
+                        className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 shadow-sm hover:shadow-md hover:border-cyan-400 dark:hover:border-cyan-500 transition-all group"
+                    >
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-cyan-50 dark:bg-cyan-900/30 group-hover:bg-cyan-100 dark:group-hover:bg-cyan-900/50 transition-colors">
+                            <ChartBarIcon className="h-6 w-6 text-cyan-700 dark:text-cyan-400" />
+                        </div>
+                        <div>
+                            <p className="font-semibold text-slate-800 dark:text-white text-sm">Mapa de Problemas e Intervenções</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Registre e acompanhe problemas da UBS</p>
+                        </div>
+                    </Link>
+
+                    {['GESTOR'].includes(user?.role) || user?.cargo === 'Recepcionista' ? (
+                        <Link
+                            to="/gestao-equipes"
+                            className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 shadow-sm hover:shadow-md hover:border-cyan-400 dark:hover:border-cyan-500 transition-all group"
+                        >
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-cyan-50 dark:bg-cyan-900/30 group-hover:bg-cyan-100 dark:group-hover:bg-cyan-900/50 transition-colors">
+                                <UserGroupIcon className="h-6 w-6 text-cyan-700 dark:text-cyan-400" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-slate-800 dark:text-white text-sm">Gestão de Equipes e Microáreas</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie equipes e áreas de cobertura</p>
+                            </div>
+                        </Link>
+                    ) : null}
+                </div>
+
+                <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 px-5 py-4 shadow-sm rise-fade stagger-4">
                     <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
                         Salve o rascunho para destravar as seções. Atualize indicadores antes de exportar o PDF.
                     </div>

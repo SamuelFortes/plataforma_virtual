@@ -412,6 +412,21 @@ const MapaProblemasIntervencoes = () => {
     }
   };
 
+  const handleToggleProblemStatus = async (problem, e) => {
+    e.stopPropagation();
+    const newStatus = problem.status === 'RESOLVIDO' ? 'ATIVO' : 'RESOLVIDO';
+    try {
+      await api.request(`/ubs/problems/${problem.id}`, {
+        method: 'PATCH',
+        requiresAuth: true,
+        body: { status: newStatus },
+      });
+      await loadProblems(ubsId);
+    } catch {
+      notify({ type: 'error', message: 'Erro ao atualizar status do problema.' });
+    }
+  };
+
   const handleDeleteProblem = async (problemId) => {
     const confirmed = await confirm({
       title: 'Excluir problema',
@@ -768,19 +783,28 @@ const MapaProblemasIntervencoes = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedProblems.map((problem) => {
                 const isSelected = problem.id === selectedProblemId;
+                const isResolvido = problem.status === 'RESOLVIDO';
                 const level = scoreLevel(problem.gut_score);
                 return (
-                  <button
+                  <div
                     key={problem.id}
                     onClick={() => setSelectedProblemId(problem.id)}
-                    className={`group relative flex flex-col text-left rounded-2xl border-2 p-5 transition-all ${
-                      isSelected
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelectedProblemId(problem.id)}
+                    className={`group relative flex flex-col text-left rounded-2xl border-2 p-5 transition-all cursor-pointer ${
+                      isResolvido
+                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/10 opacity-80'
+                        : isSelected
                         ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md shadow-blue-500/10'
                         : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-md'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className={`text-sm font-semibold leading-snug ${isSelected ? 'text-blue-900 dark:text-blue-100' : 'text-slate-900 dark:text-white'}`}>
+                      <h3 className={`text-sm font-semibold leading-snug ${
+                        isResolvido ? 'line-through text-slate-400 dark:text-slate-500' :
+                        isSelected ? 'text-blue-900 dark:text-blue-100' : 'text-slate-900 dark:text-white'
+                      }`}>
                         {problem.titulo}
                       </h3>
                       <ScoreBadge score={problem.gut_score} size="sm" />
@@ -791,20 +815,48 @@ const MapaProblemasIntervencoes = () => {
                       </p>
                     )}
                     <div className="mt-3 flex items-center gap-2 flex-wrap">
-                      {problem.is_prioritario && (
+                      {problem.is_prioritario && !isResolvido && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
                           <StarIcon className="h-3 w-3" />
                           Prioritário
                         </span>
                       )}
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                        G:{problem.gut_gravidade} U:{problem.gut_urgencia} T:{problem.gut_tendencia}
-                      </span>
+                      {!isResolvido && (
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          G:{problem.gut_gravidade} U:{problem.gut_urgencia} T:{problem.gut_tendencia}
+                        </span>
+                      )}
                     </div>
-                    {isSelected && (
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <button
+                        onClick={(e) => handleToggleProblemStatus(problem, e)}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                          isResolvido
+                            ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400'
+                        }`}
+                      >
+                        {isResolvido ? (
+                          <>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            Resolvido
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                            </svg>
+                            Ativo
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    {isSelected && !isResolvido && (
                       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-blue-500 dark:bg-blue-400" />
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>

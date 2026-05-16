@@ -24,6 +24,11 @@ class InterventionStatus(str, Enum):
     CONCLUIDO = "CONCLUIDO"
 
 
+class ProblemStatus(str, Enum):
+    ATIVO = "ATIVO"
+    RESOLVIDO = "RESOLVIDO"
+
+
 class UBSBase(BaseModel):
     nome_relatorio: Optional[str] = Field(None, max_length=255)
     nome_ubs: Optional[str] = Field(None, max_length=255)
@@ -109,6 +114,7 @@ class UBSProblemBase(BaseModel):
     gut_urgencia: int = Field(..., ge=1, le=5)
     gut_tendencia: int = Field(..., ge=1, le=5)
     is_prioritario: bool = False
+    status: ProblemStatus = ProblemStatus.ATIVO
 
 
 class UBSProblemCreate(UBSProblemBase):
@@ -122,6 +128,7 @@ class UBSProblemUpdate(BaseModel):
     gut_urgencia: Optional[int] = Field(None, ge=1, le=5)
     gut_tendencia: Optional[int] = Field(None, ge=1, le=5)
     is_prioritario: Optional[bool] = None
+    status: Optional[ProblemStatus] = None
 
 
 class UBSProblemOut(UBSProblemBase):
