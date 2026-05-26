@@ -8,7 +8,7 @@ from sqlalchemy import or_, select
 from app.database import get_db
 from app.models.diagnostico_models import UBS
 from app.models.auth_models import Usuario
-from app.schemas.diagnostico_schemas import GestorUBSItem
+from app.schemas.diagnostico_schemas import GestorUBSItem, UBSUpdate
 from app.utils.deps import get_current_gestor_user
 
 gestor_ubs_router = APIRouter(prefix="/gestor/ubs", tags=["gestor-ubs"])
@@ -43,6 +43,33 @@ async def list_all_ubs(
         items.append(item)
 
     return items
+
+
+@gestor_ubs_router.patch("/{ubs_id}", response_model=GestorUBSItem)
+async def update_ubs_gestor(
+    ubs_id: int,
+    payload: UBSUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_gestor_user),
+):
+    """Atualiza os dados básicos de uma UBS."""
+    resultado = await db.execute(
+        select(UBS).where(UBS.id == ubs_id, _not_deleted())
+    )
+    ubs = resultado.scalar_one_or_none()
+    if not ubs:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="UBS não encontrada")
+
+    dados = payload.model_dump(exclude_unset=True)
+    for campo, valor in dados.items():
+        setattr(ubs, campo, valor)
+
+    await db.commit()
+    await db.refresh(ubs)
+
+    item = GestorUBSItem.model_validate(ubs)
+    item.is_active = ubs.id == current_user.active_ubs_id
+    return item
 
 
 @gestor_ubs_router.delete("/{ubs_id}", status_code=status.HTTP_204_NO_CONTENT)

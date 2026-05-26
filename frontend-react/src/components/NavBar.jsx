@@ -72,17 +72,29 @@ const NavBar = ({ isDark, onToggleTheme }) => {
   return (
     <nav className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-30 w-full transition-all duration-300">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-[4.5rem] sm:h-20">
           <div className="flex items-center space-x-8">
-            <Link to="/dashboard" className="flex items-center space-x-2 group">
-              <div className="bg-blue-600 p-1.5 rounded-lg group-hover:bg-blue-700 transition-colors">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
+            <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 group">
+              <div className="rounded-xl overflow-hidden bg-white flex items-center shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.10)] dark:shadow-none">
+                <img
+                  src="/logo.jpeg"
+                  alt="MeuTerritório"
+                  className="h-11 sm:h-13 w-auto object-contain transition-opacity duration-200 group-hover:opacity-80"
+                  style={{ height: '44px' }}
+                />
               </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-slate-300">
-                Plataforma UBS
-              </span>
+              <div className="flex flex-col leading-none min-w-0">
+                <span className="text-base sm:text-lg font-extrabold tracking-tight whitespace-nowrap">
+                  <span className="text-[#1a3764] dark:text-blue-400">Meu</span><span className="text-[#0097a7] dark:text-cyan-400">Território</span>
+                </span>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="h-px w-3 bg-green-500 shrink-0" />
+                  <span className="text-[9px] sm:text-[10px] tracking-[0.08em] text-gray-400 dark:text-slate-500 uppercase font-medium whitespace-nowrap">
+                    conectar · conhecer · cuidar
+                  </span>
+                  <span className="h-px w-3 bg-[#1a3764] dark:bg-blue-400 shrink-0" />
+                </div>
+              </div>
             </Link>
 
             <div className="hidden md:flex items-center space-x-1">

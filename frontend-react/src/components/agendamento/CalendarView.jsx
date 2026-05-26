@@ -14,6 +14,7 @@ const CalendarView = ({ user }) => {
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [selectedApt, setSelectedApt] = useState(null);
 
+  const isGestor = user?.role === 'GESTOR';
   const canManage = ['PROFISSIONAL', 'GESTOR'].includes(user?.role);
   const canConfirm = user?.role === 'GESTOR' || user?.cargo === 'Recepcionista';
 
@@ -30,7 +31,14 @@ const CalendarView = ({ user }) => {
   const [startDate, setStartDate] = useState(getStartOfWeek(new Date()));
 
   useEffect(() => {
-    loadProfissionais();
+    if (isGestor) {
+      loadProfissionais();
+    } else {
+      // PROFISSIONAL: auto-seleciona o próprio registro
+      agendamentoService.getMeuProfissional()
+        .then((data) => { if (data?.profissional_id) setSelectedProfissional(String(data.profissional_id)); })
+        .catch(console.error);
+    }
   }, []);
 
   useEffect(() => {
@@ -147,6 +155,7 @@ const CalendarView = ({ user }) => {
       {isBlockModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 overflow-y-auto">
           <BlockScheduleModal
+            user={user}
             onClose={() => setIsBlockModalOpen(false)}
             onSuccess={() => {
                 loadAgenda();
@@ -177,19 +186,25 @@ const CalendarView = ({ user }) => {
       )}
 
       <div className="flex flex-col xl:flex-row justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-lg shadow dark:shadow-slate-800 space-y-4 xl:space-y-0">
-        <div className="w-full xl:w-1/4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Filtrar Profissional</label>
-          <select
-            value={selectedProfissional}
-            onChange={(e) => setSelectedProfissional(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none sm:text-sm rounded-md"
-          >
-            <option value="">Selecione...</option>
-            {Array.isArray(profissionais) && profissionais.map(p => (
-              <option key={p.id} value={p.id}>{p.nome} - {p.cargo}</option>
-            ))}
-          </select>
-        </div>
+        {isGestor ? (
+          <div className="w-full xl:w-1/4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Filtrar Profissional</label>
+            <select
+              value={selectedProfissional}
+              onChange={(e) => setSelectedProfissional(e.target.value)}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none sm:text-sm rounded-md"
+            >
+              <option value="">Selecione...</option>
+              {Array.isArray(profissionais) && profissionais.map(p => (
+                <option key={p.id} value={p.id}>{p.nome} - {p.cargo}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="w-full xl:w-1/4">
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-300">Minha Agenda</p>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
           <div className="flex items-center space-x-2">

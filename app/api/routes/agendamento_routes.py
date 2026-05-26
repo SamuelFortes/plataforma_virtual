@@ -65,24 +65,28 @@ async def get_meus_agendamentos(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Retorna o histórico de agendamentos do usuário logado."""
-    query = select(Agendamento).where(Agendamento.paciente_id == current_user.id).order_by(Agendamento.data_hora.desc())
-    result = await db.execute(query)
-    agendamentos = result.scalars().all()
-    
-    # Preencher nomes (poderia ser feito com join, mas fazendo simples por enquanto)
+    """Retorna apenas os agendamentos onde o usuário logado é o paciente."""
+    usuario_id = int(current_user.id)
+
+    result = await db.execute(
+        select(Agendamento)
+        .where(Agendamento.paciente_id == usuario_id)
+        .order_by(Agendamento.data_hora.desc())
+    )
+    agendamentos = [a for a in result.scalars().all() if int(a.paciente_id) == usuario_id]
+
     response = []
     for a in agendamentos:
         prof = await db.get(ProfissionalUbs, a.profissional_id)
         prof_user = await db.get(Usuario, prof.usuario_id) if prof else None
-        
-        a_resp = AgendamentoResponse.from_orm(a)
+
+        a_resp = AgendamentoResponse.model_validate(a)
         a_resp.nome_paciente = current_user.nome
         if prof_user:
             a_resp.nome_profissional = prof_user.nome
             a_resp.cargo_profissional = prof.cargo
         response.append(a_resp)
-        
+
     return response
 
 @agendamento_router.post("/agendamentos", response_model=AgendamentoResponse)
@@ -194,6 +198,21 @@ async def confirmar_consulta(
 
 # --- Rotas de Agenda (Visão Staff) ---
 
+@agendamento_router.get("/agenda/profissional/me")
+async def get_meu_profissional(
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Retorna o registro ProfissionalUbs do usuário logado."""
+    result = await db.execute(
+        select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id)
+    )
+    prof = result.scalars().first()
+    if not prof:
+        raise HTTPException(status_code=404, detail="Usuário não é um profissional de saúde.")
+    return {"profissional_id": prof.id, "nome": current_user.nome, "cargo": prof.cargo}
+
+
 @agendamento_router.get("/agenda/profissional/{profissional_id}", response_model=List[AgendamentoResponse])
 async def get_agenda_profissional(
     profissional_id: int,
@@ -206,10 +225,17 @@ async def get_agenda_profissional(
     Ver agenda semanal de um profissional.
     Acessível por: Recepcionista, ACS, Profissional (para ver a própria).
     """
-    # TODO: Refinar permissões se necessário. Por enquanto, logado pode ver disponibilidade?
-    # Req: "A recepcionista, o profissional da saude e o agente comunitário de saúde podem ver..."
     if current_user.role not in AGENDA_VIEW_ROLES:
-         raise HTTPException(status_code=403, detail="Acesso restrito a profissionais.")
+        raise HTTPException(status_code=403, detail="Acesso restrito a profissionais.")
+
+    # PROFISSIONAL só pode ver a própria agenda
+    if current_user.role == "PROFISSIONAL":
+        result_me = await db.execute(
+            select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id)
+        )
+        me_prof = result_me.scalars().first()
+        if not me_prof or me_prof.id != profissional_id:
+            raise HTTPException(status_code=403, detail="Você só pode visualizar sua própria agenda.")
 
     query = select(Agendamento).where(
         Agendamento.profissional_id == profissional_id,
@@ -294,27 +320,36 @@ async def listar_meus_bloqueios(
 ):
     """
     Lista bloqueios.
-    Se profissional_id for passado, lista daquele profissional.
-    Senão, lista do usuário logado.
+    GESTOR: pode ver bloqueios de qualquer profissional via profissional_id.
+    PROFISSIONAL: só pode ver os próprios bloqueios (profissional_id é ignorado se for de outro).
     """
-    target_id = profissional_id
-    
-    if not target_id:
-        query_prof = select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id)
-        result = await db.execute(query_prof)
-        me_profissional = result.scalars().first()
-        
+    is_gestor = (current_user.role or "").upper() == "GESTOR"
+
+    # Resolve o ProfissionalUbs do usuário logado
+    result_me = await db.execute(
+        select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id)
+    )
+    me_profissional = result_me.scalars().first()
+
+    if is_gestor:
+        # GESTOR: usa o profissional_id fornecido; sem filtro se não houver
+        if profissional_id:
+            target_id = profissional_id
+        elif me_profissional:
+            target_id = me_profissional.id
+        else:
+            return []
+    else:
+        # PROFISSIONAL: ignora profissional_id externo — sempre usa o próprio
         if not me_profissional:
-             # Se não é profissional e não passou ID, retorna lista vazia ou erro?
-             # Vamos retornar vazio para evitar 403 em dashboards gerais
-             return []
+            return []
         target_id = me_profissional.id
 
-    query = select(BloqueioAgenda).where(
-        BloqueioAgenda.profissional_id == target_id
-    ).order_by(BloqueioAgenda.data_inicio.desc())
-    
-    result = await db.execute(query)
+    result = await db.execute(
+        select(BloqueioAgenda)
+        .where(BloqueioAgenda.profissional_id == target_id)
+        .order_by(BloqueioAgenda.data_inicio.desc())
+    )
     return result.scalars().all()
 
 @agendamento_router.delete("/agenda/bloqueios/{bloqueio_id}", status_code=status.HTTP_204_NO_CONTENT)

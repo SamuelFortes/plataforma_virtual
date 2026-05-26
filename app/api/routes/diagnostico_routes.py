@@ -179,23 +179,21 @@ async def list_ubs_reports(
     """
 
     base_stmt = select(UBS).where(UBS.is_deleted.is_(False))
-    
-    # Lógica de filtro para USER
-    if (current_user.role or "USER") == "USER":
-        # Junta com a tabela de usuarios para verificar a role do criador (owner_user_id)
-        # Queremos relatórios onde o criador NÃO é USER
-        base_stmt = base_stmt.join(Usuario, UBS.owner_user_id == Usuario.id).where(Usuario.role != "USER")
+
+    role_upper = (current_user.role or "USER").upper()
+
+    # Usuário comum vê apenas relatórios finalizados (SUBMITTED), de qualquer profissional.
+    # Profissionais e gestores veem todos os seus próprios relatórios.
+    if role_upper == "USER":
+        base_stmt = base_stmt.where(UBS.status == UBSStatus.SUBMITTED.value)
 
     if status_filter is not None:
         base_stmt = base_stmt.where(UBS.status == status_filter.value)
 
     # Contagem total com os filtros aplicados
-    # Note que precisamos replicar os joins/wheres para o count funcionar corretamente com o filtro
-    if (current_user.role or "USER") == "USER":
-        count_stmt = select(func.count(UBS.id)).join(Usuario, UBS.owner_user_id == Usuario.id).where(UBS.is_deleted.is_(False), Usuario.role != "USER")
-    else:
-        count_stmt = select(func.count(UBS.id)).where(UBS.is_deleted.is_(False))
-
+    count_stmt = select(func.count(UBS.id)).where(UBS.is_deleted.is_(False))
+    if role_upper == "USER":
+        count_stmt = count_stmt.where(UBS.status == UBSStatus.SUBMITTED.value)
     if status_filter is not None:
         count_stmt = count_stmt.where(UBS.status == status_filter.value)
         
@@ -210,6 +208,18 @@ async def list_ubs_reports(
     items = [UBSOut.model_validate(ubs) for ubs in resultado.scalars().all()]
 
     return PaginatedUBS(items=items, total=total, page=page, page_size=page_size)
+
+
+@diagnostico_router.get("/configured")
+async def check_ubs_configured(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_active_user),
+):
+    """Verifica se há pelo menos uma UBS cadastrada no sistema."""
+    count_result = await db.execute(
+        select(func.count(UBS.id)).where(UBS.is_deleted.is_(False))
+    )
+    return {"configured": count_result.scalar_one() > 0}
 
 
 @diagnostico_router.delete("/{ubs_id}", status_code=status.HTTP_204_NO_CONTENT)

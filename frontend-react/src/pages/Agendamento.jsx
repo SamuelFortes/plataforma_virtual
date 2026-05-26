@@ -36,7 +36,12 @@ const Agendamento = () => {
     setLoading(true);
     try {
       const data = await agendamentoService.getMeusAgendamentos();
-      setMeusAgendamentos(data || []);
+      const todos = Array.isArray(data) ? data : [];
+      // Garante que apenas agendamentos do usuário logado sejam exibidos
+      const proprios = user?.id
+        ? todos.filter((apt) => apt.paciente_id === user.id)
+        : todos;
+      setMeusAgendamentos(proprios);
     } catch (err) {
       console.error(err);
     } finally {

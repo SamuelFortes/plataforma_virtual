@@ -3,8 +3,10 @@ import { agendamentoService } from '../../services/agendamentoService';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '../ui/Notifications';
 
-const BlockScheduleModal = ({ onClose, onSuccess }) => {
+const BlockScheduleModal = ({ onClose, onSuccess, user }) => {
   const { notify, confirm } = useNotifications();
+  const isGestor = user?.role === 'GESTOR';
+
   const [bloqueios, setBloqueios] = useState([]);
   const [profissionais, setProfissionais] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -13,18 +15,26 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
     profissional_id: '',
     data_inicio: '',
     data_fim: '',
-    motivo: ''
+    motivo: '',
   });
 
   useEffect(() => {
-    loadProfissionais();
+    if (isGestor) {
+      loadProfissionais();
+    } else {
+      // PROFISSIONAL: carrega os próprios bloqueios direto
+      loadBloqueios(null);
+    }
   }, []);
 
+  // GESTOR: recarrega bloqueios ao trocar de profissional
   useEffect(() => {
-    if (formData.profissional_id) {
-      loadBloqueios(formData.profissional_id);
-    } else {
-      setBloqueios([]);
+    if (isGestor) {
+      if (formData.profissional_id) {
+        loadBloqueios(formData.profissional_id);
+      } else {
+        setBloqueios([]);
+      }
     }
   }, [formData.profissional_id]);
 
@@ -33,13 +43,13 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
       const data = await agendamentoService.getProfissionais();
       setProfissionais(data || []);
     } catch (err) {
-      console.error("Erro ao carregar profissionais", err);
+      console.error('Erro ao carregar profissionais', err);
     }
   };
 
   const loadBloqueios = async (profId) => {
     try {
-      const data = await agendamentoService.getBloqueios(profId);
+      const data = await agendamentoService.getBloqueios(profId || null);
       setBloqueios(data || []);
     } catch (err) {
       console.error(err);
@@ -53,11 +63,11 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      if (!formData.profissional_id) {
+      if (isGestor && !formData.profissional_id) {
         notify({ type: 'warning', message: 'Selecione um profissional.' });
-         setLoading(false);
-         return;
+        return;
       }
 
       const start = new Date(formData.data_inicio + 'T00:00:00');
@@ -65,20 +75,31 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
 
       if (end < start) {
         notify({ type: 'warning', message: 'A data final deve ser igual ou posterior à data inicial.' });
-        setLoading(false);
         return;
       }
 
-      await agendamentoService.criarBloqueio({
-        profissional_id: parseInt(formData.profissional_id),
+      const payload = {
         data_inicio: start.toISOString(),
         data_fim: end.toISOString(),
-        motivo: formData.motivo
-      });
+        motivo: formData.motivo,
+      };
 
-      setFormData(prev => ({ ...prev, data_inicio: '', data_fim: '', motivo: '' }));
+      // GESTOR envia profissional_id; PROFISSIONAL deixa o backend determinar pelo token
+      if (isGestor) {
+        payload.profissional_id = parseInt(formData.profissional_id);
+      }
 
-      loadBloqueios(formData.profissional_id);
+      await agendamentoService.criarBloqueio(payload);
+      notify({ type: 'success', message: 'Bloqueio adicionado com sucesso.' });
+
+      setFormData((prev) => ({ ...prev, data_inicio: '', data_fim: '', motivo: '' }));
+
+      if (isGestor) {
+        loadBloqueios(formData.profissional_id);
+      } else {
+        loadBloqueios(null);
+      }
+
       if (onSuccess) onSuccess();
     } catch (err) {
       notify({ type: 'error', message: `Erro ao criar bloqueio: ${err.message || 'Erro desconhecido'}` });
@@ -97,7 +118,11 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
     if (!confirmed) return;
     try {
       await agendamentoService.deleteBloqueio(id);
-      loadBloqueios(formData.profissional_id);
+      if (isGestor) {
+        loadBloqueios(formData.profissional_id);
+      } else {
+        loadBloqueios(null);
+      }
       if (onSuccess) onSuccess();
     } catch (err) {
       notify({ type: 'error', message: 'Erro ao excluir bloqueio.' });
@@ -105,6 +130,12 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
   };
 
   const today = new Date().toISOString().split('T')[0];
+
+  const bloqueiosLabel = isGestor
+    ? formData.profissional_id
+      ? 'Bloqueios Ativos'
+      : 'Bloqueios Ativos (Selecione um profissional para ver)'
+    : 'Meus Bloqueios Ativos';
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -120,26 +151,36 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
 
       <div className="p-6 overflow-y-auto">
         <div className="mb-8 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-          <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3 uppercase tracking-wide">Novo Bloqueio</h4>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3 uppercase tracking-wide">
+            Novo Bloqueio
+          </h4>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Profissional</label>
-              <select
-                name="profissional_id"
-                value={formData.profissional_id}
-                onChange={handleChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                required
-              >
-                <option value="">Selecione um profissional...</option>
-                {profissionais.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.cargo} - {p.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {!isGestor && (
+            <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">
+              Você está bloqueando sua própria agenda.
+            </p>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isGestor && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Profissional</label>
+                <select
+                  name="profissional_id"
+                  value={formData.profissional_id}
+                  onChange={handleChange}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  required
+                >
+                  <option value="">Selecione um profissional...</option>
+                  {profissionais.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.cargo} - {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -167,6 +208,7 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
                 />
               </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Motivo (Opcional)</label>
               <input
@@ -178,6 +220,7 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
                 className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 rounded-md focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
+
             <div className="flex justify-end">
               <button
                 type="submit"
@@ -192,19 +235,25 @@ const BlockScheduleModal = ({ onClose, onSuccess }) => {
 
         <div>
           <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3 border-b dark:border-slate-700 pb-2">
-            Bloqueios Ativos {formData.profissional_id ? '' : '(Selecione um profissional para ver)'}
+            {bloqueiosLabel}
           </h4>
           {bloqueios.length === 0 ? (
             <p className="text-gray-500 dark:text-slate-400 text-sm italic">
-                {formData.profissional_id ? 'Nenhum bloqueio encontrado para este profissional.' : 'Aguardando seleção...'}
+              {isGestor && !formData.profissional_id
+                ? 'Aguardando seleção...'
+                : 'Nenhum bloqueio encontrado.'}
             </p>
           ) : (
             <div className="space-y-3">
               {bloqueios.map((b) => (
-                <div key={b.id} className="flex justify-between items-center bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-3 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                <div
+                  key={b.id}
+                  className="flex justify-between items-center bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-3 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                >
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {new Date(b.data_inicio).toLocaleDateString('pt-BR')} até {new Date(b.data_fim).toLocaleDateString('pt-BR')}
+                      {new Date(b.data_inicio).toLocaleDateString('pt-BR')} até{' '}
+                      {new Date(b.data_fim).toLocaleDateString('pt-BR')}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-slate-400">
                       {b.motivo || 'Sem motivo especificado'}

@@ -114,12 +114,27 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+        <div className="flex flex-col items-center">
+          <img src="/logo.jpeg" alt="MeuTerritório" className="h-20 w-auto object-contain sm:h-24 drop-shadow-md" />
+          <div className="mt-2 flex flex-col items-center leading-tight">
+            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              <span className="text-[#1a3764] dark:text-blue-400">Meu</span><span className="text-[#0097a7] dark:text-cyan-400">Território</span>
+            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="h-px w-5 bg-green-500 shrink-0" />
+              <span className="text-[10px] tracking-widest text-gray-400 dark:text-slate-500 uppercase font-medium">
+                conectar · conhecer · cuidar
+              </span>
+              <span className="h-px w-5 bg-[#1a3764] dark:bg-blue-400 shrink-0" />
+            </div>
+          </div>
+        </div>
+        <h2 className="mt-4 text-center text-2xl font-extrabold text-gray-900 dark:text-white">
           Crie sua conta
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
           Ou{' '}
-          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link to="/login" className="font-medium text-cyan-600 hover:text-cyan-500">
             faça login na sua conta existente
           </Link>
         </p>

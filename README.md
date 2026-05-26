@@ -2,8 +2,6 @@
 
 Este projeto é uma plataforma para gestão e diagnóstico de Unidades Básicas de Saúde (UBS), permitindo a coleta de dados situacionais, solicitações profissionais e agendamentos.
 
-Nota: README atualizado para registrar estabilidade da branch atual e configurações de ambiente de desenvolvimento seguro.
-
 ## 🚀 Como Executar o Projeto Localmente
 
 Siga os passos abaixo para configurar o ambiente de desenvolvimento em sua máquina.
@@ -14,77 +12,87 @@ Antes de começar, você precisará ter instalado:
 - [Python 3.10+](https://www.python.org/downloads/)
 - [Node.js (LTS)](https://nodejs.org/)
 - [Git](https://git-scm.com/)
-- [mkcert](https://github.com/FiloSottile/mkcert/releases) (Para gerar certificados locais HTTPS)
+- [mkcert](https://github.com/FiloSottile/mkcert/releases) (para gerar certificados locais HTTPS)
 
 ---
 
-### 🔧 1. Configuração do Backend (API)
+### 🔧 1. Clonar o repositório
 
-O backend é construído com FastAPI e utiliza SQLite por padrão para desenvolvimento local.
-
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/cocaioo/plataforma_virtual.git](https://github.com/cocaioo/plataforma_virtual.git)
-    cd plataforma_virtual
-    ```
-
-2.  **Crie e ative um ambiente virtual:**
-    * **Windows (PowerShell):**
-      ```powershell
-      python -m venv venv
-      .\venv\Scripts\Activate.ps1
-      ```
-    * **Linux / Mac:**
-      ```bash
-      python3 -m venv venv
-      source venv/bin/activate
-      ```
-
-3.  **Instale as dependências:**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4.  **Inicialize o Banco de Dados:**
-    Este comando criará o arquivo `dev.db` (SQLite) e populará as tabelas iniciais.
-    ```bash
-    python -m scripts.creates.create_tables
-    ```
-
-5.  **Inicie o servidor:**
-    ```bash
-    uvicorn main:app --reload
-    ```
-    A API estará disponível em `http://localhost:8000`.
-    Você pode acessar a documentação interativa (Swagger) em `http://localhost:8000/docs`.
+```bash
+git clone https://github.com/cocaioo/plataforma_virtual.git
+cd plataforma_virtual
+```
 
 ---
 
-### 💻 2. Configuração do Frontend (React)
+### 🔧 2. Configuração do Backend (API)
+
+O backend é construído com FastAPI e utiliza PostgreSQL (Supabase) como banco de dados.
+
+1. **Crie e ative um ambiente virtual:**
+   - **Windows (PowerShell):**
+     ```powershell
+     python -m venv venv
+     .\venv\Scripts\Activate.ps1
+     ```
+   - **Linux / Mac:**
+     ```bash
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
+
+2. **Instale as dependências:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Crie o arquivo `.env`** na raiz do projeto (veja a seção 3.4 abaixo para o conteúdo completo).
+
+4. **Inicialize o banco de dados:**
+   ```bash
+   python -m scripts.creates.create_tables
+   ```
+   Este comando cria as tabelas e insere os serviços padrão.
+
+5. **Execute as migrations do Alembic** (necessário para aplicar mudanças de esquema):
+   ```bash
+   alembic upgrade head
+   ```
+
+6. **Inicie o servidor:**
+   ```bash
+   uvicorn main:app --reload
+   ```
+   A API estará disponível em `http://localhost:8000`.
+   Documentação interativa (Swagger): `http://localhost:8000/docs`.
+
+---
+
+### 💻 3. Configuração do Frontend (React)
 
 O frontend é construído com React + Vite.
 
-1.  **Navegue até a pasta do frontend:**
-    ```bash
-    cd frontend-react
-    ```
+1. **Navegue até a pasta do frontend:**
+   ```bash
+   cd frontend-react
+   ```
 
-2.  **Instale as dependências:**
-    ```bash
-    npm install
-    ```
+2. **Instale as dependências:**
+   ```bash
+   npm install
+   ```
 
 ---
 
-### 🔐 3. Configuração de Login Social (Google OAuth no Localhost)
+### 🔐 4. Configuração de Login Social (Google OAuth no Localhost)
 
 O Google exige HTTPS e domínio exato correspondente ao cadastrado no Google Cloud Console. A solução adotada é usar o domínio `plataforma-virtual-local.duckdns.org` apontando para `127.0.0.1` com um certificado local gerado pelo `mkcert`. **Cada desenvolvedor deve realizar este processo em sua própria máquina.**
 
-> Os passos 3.1 e 3.2 exigem um terminal com **privilégios de Administrador**.
+> Os passos 4.1 e 4.2 exigem um terminal com **privilégios de Administrador**.
 
-#### 3.1. Instalar o mkcert (terminal como Administrador)
+#### 4.1. Instalar o mkcert (terminal como Administrador)
 
-Via **winget** (já vem instalado no Windows 10/11 — recomendado):
+Via **winget** (recomendado — já vem no Windows 10/11):
 ```powershell
 winget install FiloSottile.mkcert
 ```
@@ -98,7 +106,7 @@ choco install mkcert -y
 
 > Após instalar, feche e reabra o terminal de Administrador antes de continuar.
 
-#### 3.2. Configurar o arquivo Hosts e instalar a CA (terminal como Administrador)
+#### 4.2. Configurar o arquivo Hosts e instalar a CA (terminal como Administrador)
 
 ```powershell
 # Adiciona o domínio local apontando para 127.0.0.1
@@ -108,11 +116,11 @@ Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value "127.0.0.1`tpla
 ipconfig /flushdns
 
 # Instala a autoridade certificadora do mkcert no store do Windows
-# (o Chrome e o Edge passarão a confiar nos certificados gerados)
+# (Chrome e Edge passarão a confiar nos certificados gerados)
 mkcert -install
 ```
 
-#### 3.3. Gerar os certificados SSL (terminal normal, na raiz do projeto)
+#### 4.3. Gerar os certificados SSL (terminal normal, na raiz do projeto)
 
 ```powershell
 cd frontend-react
@@ -123,40 +131,47 @@ Isso cria dois arquivos dentro de `frontend-react/`:
 - `plataforma-virtual-local.duckdns.org+2.pem` (certificado)
 - `plataforma-virtual-local.duckdns.org+2-key.pem` (chave privada)
 
-O `vite.config.js` já está configurado para ler esses arquivos. O `.gitignore` impede que eles subam para o repositório.
+O `vite.config.js` já está configurado para ler esses arquivos automaticamente. O `.gitignore` impede que eles subam para o repositório.
 
-#### 3.4. Criar o arquivo `.env` na raiz do projeto
+#### 4.4. Criar o arquivo `.env` na raiz do projeto
 
-Crie o arquivo `.env` com o conteúdo abaixo. As credenciais do Google (`GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`) devem ser obtidas com outro membro da equipe ou no painel do Render:
+Crie o arquivo `.env` com o conteúdo abaixo. Os valores marcados com `SOLICITAR` devem ser obtidos com outro membro da equipe ou no painel do Render/Supabase:
 
 ```env
-# Google OAuth — solicite os valores ao responsável pelo projeto
-GOOGLE_CLIENT_ID=COLE_AQUI_SEU_CLIENT_ID
-GOOGLE_CLIENT_SECRET=COLE_AQUI_SEU_CLIENT_SECRET
+# Banco de dados PostgreSQL (Supabase) — solicite ao responsável pelo projeto
+DATABASE_URL=SOLICITAR
+DB_HOST=SOLICITAR
+DB_NAME=postgres
+DB_PASSWORD=SOLICITAR
+DB_PORT=6543
+DB_USER=SOLICITAR
 
-# JWT
-JWT_SECRET_KEY=gere-uma-chave-segura-com-python-secrets-token-hex-32
+# Google OAuth — solicite os valores ao responsável pelo projeto
+GOOGLE_CLIENT_ID=SOLICITAR
+GOOGLE_CLIENT_SECRET=SOLICITAR
+
+# JWT — gere uma chave segura com: python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET_KEY=gere-uma-chave-segura-aqui
 JWT_EXPIRE_MINUTES=60
 
-# URLs
-# O backend continua em HTTP internamente; o Vite faz proxy de /api → localhost:8000
+# URLs (manter exatamente assim para o ambiente local com DuckDNS)
 BACKEND_URL=http://localhost:8000
 FRONTEND_URL=https://plataforma-virtual-local.duckdns.org:5173
 
 # URI de callback registrada no Google Cloud Console
-# Roteada pelo proxy do Vite — não é necessário SSL no backend
+# Roteada pelo proxy do Vite — não é necessário SSL direto no backend
 GOOGLE_REDIRECT_URI=https://plataforma-virtual-local.duckdns.org:5173/api/auth/google/callback
+
+PYTHONPATH=.
 ```
 
-> Para gerar um `JWT_SECRET_KEY` seguro, rode: `python -c "import secrets; print(secrets.token_hex(32))"`
-
-#### 3.5. Iniciar backend e frontend
+#### 4.5. Iniciar backend e frontend
 
 ```powershell
 # Terminal 1 — Backend (na raiz do projeto, com o venv ativado)
 uvicorn main:app --reload
 
-# Terminal 2 — Frontend
+# Terminal 2 — Frontend (na pasta frontend-react)
 cd frontend-react
 npm run dev
 ```
@@ -183,27 +198,56 @@ O backend permanece em HTTP puro — apenas o Vite dev server expõe HTTPS.
 
 ---
 
-### 📦 4. Build de Produção (Opcional)
+### 📦 5. Build de Produção (Opcional)
 
-Se desejar rodar o projeto de forma integrada (o servidor FastAPI servindo o frontend já compilado):
+Se desejar rodar o projeto de forma integrada (FastAPI servindo o frontend já compilado):
 
-1.  **Gere o build do frontend:**
-    ```bash
-    cd frontend-react
-    npm run build
-    ```
-2.  **O FastAPI servirá os arquivos estáticos:**
-    Certifique-se de que a pasta `frontend-react/dist` existe. O backend irá servir o app na rota raiz `/`.
+1. **Gere o build do frontend:**
+   ```bash
+   cd frontend-react
+   npm run build
+   ```
+2. **O FastAPI servirá os arquivos estáticos:**
+   Certifique-se de que a pasta `frontend-react/dist` existe. O backend servirá o app na rota raiz `/`.
 
 ---
 
 ## 🔑 Primeiro Acesso e Usuário Gestor
 
-Por padrão, novos usuários registrados via interface recebem a role `USER`. Para acessar as funcionalidades de gestão, é necessário um usuário com role `GESTOR`. Existem duas formas de obter este acesso em ambiente de desenvolvimento:
+Por padrão, novos usuários registrados via interface recebem a role `USER`. Para acessar as funcionalidades de gestão, é necessário um usuário com role `GESTOR`.
 
 ### Opção A: Usando o script automatizado (Recomendado)
-Este script cria um usuário administrador padrão ou promove um usuário existente (caso você já tenha se registrado pelo frontend).
 
-1. Execute o script na raiz do projeto:
-   ```bash
-    python -m scripts.creates.create_admin
+Este script cria um usuário administrador padrão ou promove um usuário existente (caso você já tenha se registrado pelo frontend com o mesmo e-mail).
+
+Execute na raiz do projeto (com o venv ativado):
+```bash
+python -m scripts.creates.create_admin
+```
+
+As credenciais criadas serão:
+| Campo | Valor |
+|-------|-------|
+| **E-mail** | `admin@example.com` |
+| **Senha** | `Password123` |
+| **Role** | `GESTOR` |
+
+### Opção B: Promovendo um usuário existente manualmente
+
+Caso já tenha um usuário cadastrado e queira promovê-lo a GESTOR diretamente no banco:
+
+```sql
+UPDATE usuarios SET role = 'GESTOR' WHERE email = 'seu@email.com';
+```
+
+Execute via painel do Supabase (SQL Editor) ou via `psql`.
+
+---
+
+## 🌐 Acesso de outros desenvolvedores ao ambiente de homologação
+
+O domínio `plataforma-virtual-local.duckdns.org` aponta para o IP público da máquina que está rodando o servidor. Para que outros desenvolvedores acessem a aplicação:
+
+- **Quem roda o servidor** precisa realizar a configuração do arquivo Hosts (passo 4.2) — pois em sua própria máquina o NAT loopback geralmente não funciona.
+- **Quem acessa remotamente** (pela internet) não precisa configurar nada, desde que o roteador tenha **port forwarding** da porta `5173` apontando para a máquina que executa o Vite.
+- **Quem está na mesma rede local** pode acessar diretamente pelo IP local da máquina (ex: `https://192.168.X.X:5173`), aceitando o aviso de certificado no navegador.

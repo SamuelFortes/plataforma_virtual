@@ -33,6 +33,10 @@ export const agendamentoService = {
   deleteBloqueio: (id) => 
     api.request(`/agenda/bloqueios/${id}`, { method: 'DELETE', requiresAuth: true }),
 
+  // Meu registro de profissional (para PROFISSIONAL auto-carregar própria agenda)
+  getMeuProfissional: () =>
+    api.request('/agenda/profissional/me', { requiresAuth: true }),
+
   // Listar Profissionais
   getProfissionais: (cargo = null) => {
     const query = cargo ? `?cargo=${encodeURIComponent(cargo)}` : '';

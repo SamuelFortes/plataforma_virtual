@@ -45,15 +45,14 @@ const UbsGate = ({ children }) => {
   const [status, setStatus] = useState({ loading: true, hasUbs: true });
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
-  const canSetupUbs = ['PROFISSIONAL', 'GESTOR'].includes(user?.role);
+  const isGestor = user?.role === 'GESTOR';
 
   useEffect(() => {
     let active = true;
     const checkUbs = async () => {
       try {
-        const data = await api.request('/ubs?page=1&page_size=1', { requiresAuth: true });
-        const hasUbs = Array.isArray(data?.items) && data.items.length > 0;
-        if (active) setStatus({ loading: false, hasUbs });
+        const data = await api.request('/ubs/configured', { requiresAuth: true });
+        if (active) setStatus({ loading: false, hasUbs: data?.configured === true });
       } catch {
         if (active) setStatus({ loading: false, hasUbs: false });
       }
@@ -72,7 +71,7 @@ const UbsGate = ({ children }) => {
   }
 
   if (!status.hasUbs) {
-    if (canSetupUbs) {
+    if (isGestor) {
       return <Navigate to="/setup-ubs" replace />;
     }
 
@@ -81,8 +80,7 @@ const UbsGate = ({ children }) => {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
           <h2 className="text-lg font-semibold">UBS ainda não configurada</h2>
           <p className="mt-2 text-sm text-amber-800">
-            A configuração inicial precisa ser feita por um gestor, profissional ou ACS. Fale com o administrador
-            para liberar o acesso.
+            O sistema ainda não possui uma UBS cadastrada. Aguarde o administrador realizar a configuração inicial.
           </p>
         </div>
       </div>
@@ -136,7 +134,7 @@ function App() {
               } />
 
               <Route path="/setup-ubs" element={
-                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR']}>
+                <ProtectedRoute allowedRoles={['GESTOR']}>
                   <SetupUbs />
                 </ProtectedRoute>
               } />

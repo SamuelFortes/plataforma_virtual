@@ -16,6 +16,7 @@ const hasCerts = fs.existsSync(certPath) && fs.existsSync(keyPath)
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

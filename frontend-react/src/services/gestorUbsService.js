@@ -17,4 +17,12 @@ export const gestorUbsService = {
   setActive: async (ubsId) => {
     return api.request(`/gestor/ubs/${ubsId}/set-active`, { method: 'PATCH', requiresAuth: true });
   },
+
+  update: async (ubsId, data) => {
+    return api.request(`/gestor/ubs/${ubsId}`, {
+      method: 'PATCH',
+      requiresAuth: true,
+      body: JSON.stringify(data),
+    });
+  },
 };

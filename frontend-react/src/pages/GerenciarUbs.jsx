@@ -3,6 +3,35 @@ import { Link } from 'react-router-dom';
 import { useNotifications } from '../components/ui/Notifications';
 import { gestorUbsService } from '../services/gestorUbsService';
 
+const EMPTY_FORM = {
+  nome_ubs: '',
+  cnes: '',
+  area_atuacao: '',
+  numero_habitantes_ativos: '',
+  numero_microareas: '',
+  numero_familias_cadastradas: '',
+  numero_domicilios: '',
+  responsavel_nome: '',
+  responsavel_cargo: '',
+  responsavel_contato: '',
+};
+
+const Field = ({ label, name, value, onChange, type = 'text', required }) => (
+  <div>
+    <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <input
+      type={type}
+      name={name}
+      value={value ?? ''}
+      onChange={onChange}
+      className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-md text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      required={required}
+    />
+  </div>
+);
+
 const GerenciarUbs = () => {
   const { notify } = useNotifications();
   const [ubsList, setUbsList] = useState([]);
@@ -10,6 +39,9 @@ const GerenciarUbs = () => {
   const [error, setError] = useState(null);
   const [actionId, setActionId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
   const loadUbs = async () => {
     setError(null);
@@ -54,6 +86,55 @@ const GerenciarUbs = () => {
     }
   };
 
+  const openEdit = (ubs) => {
+    setEditTarget(ubs);
+    setEditForm({
+      nome_ubs: ubs.nome_ubs ?? '',
+      cnes: ubs.cnes ?? '',
+      area_atuacao: ubs.area_atuacao ?? '',
+      numero_habitantes_ativos: ubs.numero_habitantes_ativos ?? '',
+      numero_microareas: ubs.numero_microareas ?? '',
+      numero_familias_cadastradas: ubs.numero_familias_cadastradas ?? '',
+      numero_domicilios: ubs.numero_domicilios ?? '',
+      responsavel_nome: ubs.responsavel_nome ?? '',
+      responsavel_cargo: ubs.responsavel_cargo ?? '',
+      responsavel_contato: ubs.responsavel_contato ?? '',
+    });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      const payload = {
+        nome_ubs: editForm.nome_ubs || undefined,
+        cnes: editForm.cnes || undefined,
+        area_atuacao: editForm.area_atuacao || undefined,
+        numero_habitantes_ativos: editForm.numero_habitantes_ativos !== '' ? Number(editForm.numero_habitantes_ativos) : undefined,
+        numero_microareas: editForm.numero_microareas !== '' ? Number(editForm.numero_microareas) : undefined,
+        numero_familias_cadastradas: editForm.numero_familias_cadastradas !== '' ? Number(editForm.numero_familias_cadastradas) : undefined,
+        numero_domicilios: editForm.numero_domicilios !== '' ? Number(editForm.numero_domicilios) : undefined,
+        responsavel_nome: editForm.responsavel_nome || undefined,
+        responsavel_cargo: editForm.responsavel_cargo || undefined,
+        responsavel_contato: editForm.responsavel_contato || undefined,
+      };
+      await gestorUbsService.update(editTarget.id, payload);
+      notify({ type: 'success', message: 'UBS atualizada com sucesso.' });
+      setEditTarget(null);
+      await loadUbs();
+    } catch (err) {
+      notify({ type: 'error', message: err.message || 'Erro ao atualizar UBS.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="page-shell">
       <div className="page-panel mb-6 rise-fade">
@@ -61,7 +142,7 @@ const GerenciarUbs = () => {
           <div>
             <h1 className="page-title">Gerenciar UBS</h1>
             <p className="page-subtitle">
-              Visualize, ative ou remova as UBS cadastradas no sistema.
+              Visualize, edite, ative ou remova as UBS cadastradas no sistema.
             </p>
           </div>
           <Link
@@ -124,6 +205,13 @@ const GerenciarUbs = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+                      <button
+                        onClick={() => openEdit(ubs)}
+                        disabled={actionId === ubs.id}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                      >
+                        Editar
+                      </button>
                       {!ubs.is_active && (
                         <button
                           onClick={() => handleSetActive(ubs.id)}
@@ -148,6 +236,73 @@ const GerenciarUbs = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de edição */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                Editar UBS
+              </h3>
+              <button
+                onClick={() => setEditTarget(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleEditSave} className="px-6 py-4 space-y-4">
+              <Field label="Nome da UBS" name="nome_ubs" value={editForm.nome_ubs} onChange={handleEditChange} required />
+              <Field label="CNES" name="cnes" value={editForm.cnes} onChange={handleEditChange} required />
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Área de Atuação <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="area_atuacao"
+                  value={editForm.area_atuacao}
+                  onChange={handleEditChange}
+                  rows={3}
+                  required
+                  className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-md text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Habitantes Ativos" name="numero_habitantes_ativos" value={editForm.numero_habitantes_ativos} onChange={handleEditChange} type="number" />
+                <Field label="Microáreas" name="numero_microareas" value={editForm.numero_microareas} onChange={handleEditChange} type="number" />
+                <Field label="Famílias Cadastradas" name="numero_familias_cadastradas" value={editForm.numero_familias_cadastradas} onChange={handleEditChange} type="number" />
+                <Field label="Domicílios" name="numero_domicilios" value={editForm.numero_domicilios} onChange={handleEditChange} type="number" />
+              </div>
+
+              <div className="border-t border-gray-100 dark:border-slate-800 pt-3 space-y-3">
+                <p className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Responsável</p>
+                <Field label="Nome" name="responsavel_nome" value={editForm.responsavel_nome} onChange={handleEditChange} />
+                <Field label="Cargo" name="responsavel_cargo" value={editForm.responsavel_cargo} onChange={handleEditChange} />
+                <Field label="Contato" name="responsavel_contato" value={editForm.responsavel_contato} onChange={handleEditChange} />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditTarget(null)}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal de confirmação de exclusão */}
       {confirmDelete && (

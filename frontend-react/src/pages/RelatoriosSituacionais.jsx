@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useDebounce } from '../hooks/useDebounce';
 import { useNotifications } from '../components/ui/Notifications';
 import { ubsService } from '../services/ubsService';
+import RelatorioPublicoDashboard from '../components/RelatorioPublicoDashboard';
 import {
     PencilSquareIcon,
     TrashIcon,
@@ -11,6 +12,7 @@ import {
     PlusIcon,
     ChartBarIcon,
     UserGroupIcon,
+    EyeIcon,
 } from '@heroicons/react/24/outline';
 
 // --- COMPONENTES VISUAIS ---
@@ -1128,6 +1130,8 @@ const RelatoriosSituacionais = () => {
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState(null);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [dashboardReportId, setDashboardReportId] = useState(null);
 
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
@@ -1186,14 +1190,20 @@ const RelatoriosSituacionais = () => {
         onClose={() => setModalOpen(false)}
         reportId={selectedReportId}
         onRefresh={fetchRelatorios}
-                                                                ubsInfo={selectedReportId ? selectedReport : (reports[0] || null)}
+        ubsInfo={selectedReportId ? selectedReport : (reports[0] || null)}
+      />
+
+      <RelatorioPublicoDashboard
+        isOpen={dashboardOpen}
+        onClose={() => setDashboardOpen(false)}
+        reportId={dashboardReportId}
       />
 
                         <div className="page-panel p-6 rise-fade">
                 <div className="flex justify-between items-center mb-5">
           <div>
                         <h1 className="page-title">Relatórios Situacionais</h1>
-                        <p className="page-subtitle">Gerencie os diagnósticos das Unidades Básicas de Saúde</p>
+                        <p className="page-subtitle">{isUserRole ? 'Veja o que está acontecendo na sua UBS' : 'Gerencie os diagnósticos das Unidades Básicas de Saúde'}</p>
           </div>
                     {!isUserRole && (
                                                                                                 <button onClick={() => { setSelectedReportId(null); setModalOpen(true); }} className="bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2 rise-fade stagger-2">
@@ -1233,11 +1243,20 @@ const RelatoriosSituacionais = () => {
                     ) : null}
                 </div>
 
-                <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 px-5 py-4 shadow-sm rise-fade stagger-4">
-                    <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                        Salve o rascunho para destravar as seções. Atualize indicadores antes de exportar o PDF.
-                    </div>
-                </div>
+                {!isUserRole && (
+                  <div className="mb-8 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 px-5 py-4 shadow-sm rise-fade stagger-4">
+                      <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                          Salve o rascunho para destravar as seções. Atualize indicadores antes de exportar o PDF.
+                      </div>
+                  </div>
+                )}
+                {isUserRole && (
+                  <div className="mb-8 rounded-2xl border border-cyan-200 dark:border-cyan-800 bg-gradient-to-r from-cyan-50 to-sky-50 dark:from-cyan-900/20 dark:to-sky-900/20 px-5 py-4 shadow-sm rise-fade stagger-4">
+                      <div className="text-sm text-cyan-800 dark:text-cyan-300">
+                          Clique em <strong>Ver relatório</strong> para visualizar as informações da sua UBS de forma clara e visual.
+                      </div>
+                  </div>
+                )}
 
         {error && (
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-300 flex justify-between items-center">
@@ -1256,51 +1275,67 @@ const RelatoriosSituacionais = () => {
                     <div>
                         {reports.length === 0 ? (
                             <div className="text-center py-12 text-gray-500 dark:text-slate-400">
-                                Nenhum relatório encontrado. Configure a UBS para iniciar o diagnóstico.
+                                {isUserRole
+                                  ? 'Nenhum relatório publicado ainda. A equipe da UBS ainda está preparando as informações.'
+                                  : 'Nenhum relatório encontrado. Configure a UBS para iniciar o diagnóstico.'}
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-4">
                                 {reports.map((report) => (
-                                    <div key={report.id} className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-6">
+                                    <div
+                                      key={report.id}
+                                      className={`rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-6 transition-shadow ${isUserRole ? 'hover:shadow-md hover:border-cyan-300 dark:hover:border-cyan-700 cursor-pointer' : ''}`}
+                                      onClick={isUserRole ? () => { setDashboardReportId(report.id); setDashboardOpen(true); } : undefined}
+                                    >
                                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                             <div>
                                                 <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
                                                     {report.nome_relatorio || 'Diagnóstico situacional'}
                                                 </h2>
                                                 <p className="text-sm text-gray-500 dark:text-slate-400">UBS: {report.nome_ubs || '-'}</p>
-                                                <div className="mt-2 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${report.status === 'DRAFT' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'}`}>
-                                                        {report.status === 'DRAFT' ? 'RASCUNHO' : 'ENVIADO'}
-                                                    </span>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+                                                    {!isUserRole && (
+                                                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${report.status === 'DRAFT' ? 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'}`}>
+                                                          {report.status === 'DRAFT' ? 'RASCUNHO' : 'ENVIADO'}
+                                                      </span>
+                                                    )}
                                                     <span>CNES: {report.cnes || 'Não informado'}</span>
                                                     <span>Período: {report.periodo_referencia || '-'}</span>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {!isUserRole && (
+                                            <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                                                {isUserRole ? (
                                                     <button
-                                                        onClick={() => { setSelectedReportId(report.id); setModalOpen(true); }}
-                                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
-                                                        title="Editar Relatório"
+                                                        onClick={() => { setDashboardReportId(report.id); setDashboardOpen(true); }}
+                                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold transition-colors shadow-sm"
                                                     >
-                                                        <PencilSquareIcon className="w-5 h-5" />
+                                                        <EyeIcon className="w-4 h-4" />
+                                                        Ver relatório
                                                     </button>
-                                                )}
-                                                <button
-                                                    onClick={() => handleExport(report.id)}
-                                                    className="p-2 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-600"
-                                                    title="Exportar PDF"
-                                                >
-                                                    <DocumentArrowDownIcon className="w-5 h-5" />
-                                                </button>
-                                                {!isUserRole && (
-                                                    <button
-                                                        onClick={() => handleDelete(report.id)}
-                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
-                                                        title="Excluir Relatório"
-                                                    >
-                                                        <TrashIcon className="w-5 h-5" />
-                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => { setSelectedReportId(report.id); setModalOpen(true); }}
+                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+                                                            title="Editar Relatório"
+                                                        >
+                                                            <PencilSquareIcon className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleExport(report.id)}
+                                                            className="p-2 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-gray-200 dark:hover:border-slate-600"
+                                                            title="Exportar PDF"
+                                                        >
+                                                            <DocumentArrowDownIcon className="w-5 h-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(report.id)}
+                                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                                                            title="Excluir Relatório"
+                                                        >
+                                                            <TrashIcon className="w-5 h-5" />
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
