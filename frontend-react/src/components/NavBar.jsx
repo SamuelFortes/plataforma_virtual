@@ -79,7 +79,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 <img
                   src="/logo.jpeg"
                   alt="MeuTerritório"
-                  className="h-12 sm:h-14 w-auto object-contain transition-opacity duration-200 group-hover:opacity-80"
+                  className="h-12 sm:h-12 w-auto object-contain scale-[1.35] sm:scale-[1.15] transition-opacity duration-200 group-hover:opacity-80"
                 />
               </div>
               <span className="text-base sm:text-lg font-extrabold tracking-tight whitespace-nowrap">

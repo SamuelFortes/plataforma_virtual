@@ -173,27 +173,20 @@ async def list_ubs_reports(
     page_size: int = Query(20, ge=1, le=100),
     status_filter: Optional[UBSStatus] = Query(None, alias="status"),
 ):
-    """Lista relatórios (diagnósticos UBS) do usuário autenticado.
+    """Lista todos os relatórios (diagnósticos UBS) não deletados.
 
-    Se USER: vê apenas relatórios criados por NÃO-USER (Gestor/Profissional).
+    USER vê todos os relatórios (somente leitura via UI). GESTOR/PROFISSIONAL gerenciam os seus.
     """
 
     base_stmt = select(UBS).where(UBS.is_deleted.is_(False))
 
     role_upper = (current_user.role or "USER").upper()
 
-    # Usuário comum vê apenas relatórios finalizados (SUBMITTED), de qualquer profissional.
-    # Profissionais e gestores veem todos os seus próprios relatórios.
-    if role_upper == "USER":
-        base_stmt = base_stmt.where(UBS.status == UBSStatus.SUBMITTED.value)
-
     if status_filter is not None:
         base_stmt = base_stmt.where(UBS.status == status_filter.value)
 
     # Contagem total com os filtros aplicados
     count_stmt = select(func.count(UBS.id)).where(UBS.is_deleted.is_(False))
-    if role_upper == "USER":
-        count_stmt = count_stmt.where(UBS.status == UBSStatus.SUBMITTED.value)
     if status_filter is not None:
         count_stmt = count_stmt.where(UBS.status == status_filter.value)
         

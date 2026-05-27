@@ -115,7 +115,9 @@ const Register = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex flex-col items-center">
-          <img src="/logo.jpeg" alt="MeuTerritório" className="h-20 w-auto object-contain sm:h-24 drop-shadow-md" />
+          <div className="overflow-hidden drop-shadow-md">
+            <img src="/logo.jpeg" alt="MeuTerritório" className="h-20 w-auto object-contain scale-[1.35] sm:scale-[1.15] sm:h-20" />
+          </div>
           <div className="mt-2 flex flex-col items-center leading-tight">
             <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               <span className="text-[#1a3764] dark:text-blue-300">Meu</span><span className="text-[#0097a7] dark:text-teal-300">Território</span>

@@ -55,7 +55,7 @@ const Login = ({ isDark, onToggleTheme }) => {
             <img
               src="/logo.jpeg"
               alt="MeuTerritório"
-              className="h-28 w-auto object-contain sm:h-32"
+              className="h-28 w-auto object-contain scale-[1.35] sm:scale-[1.15] sm:h-28"
             />
           </div>
           <div className="mt-2 flex flex-col items-center leading-tight">

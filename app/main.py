@@ -121,6 +121,10 @@ async def health_check(request: Request, db: AsyncSession = Depends(get_db)):
 # Rota catch-all para servir o index.html do React para qualquer outra rota
 @app.get("/{catchall:path}")
 async def serve_react_app(catchall: str):
+    # Serve arquivos estáticos da raiz do dist (ex: logo.jpeg, favicon.ico)
+    static_file = f"frontend-react/dist/{catchall}"
+    if os.path.exists(static_file) and os.path.isfile(static_file):
+        return FileResponse(static_file)
     index_path = "frontend-react/dist/index.html"
     if os.path.exists(index_path):
         return FileResponse(index_path)
