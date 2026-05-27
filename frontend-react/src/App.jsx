@@ -15,6 +15,7 @@ import SuporteFeedback from './pages/SuporteFeedback';
 import GerenciarMensagens from './pages/GerenciarMensagens';
 import GestaoEquipesMicroareas from './pages/GestaoEquipesMicroareas';
 import RedefinirSenha from './pages/RedefinirSenha';
+import Configuracoes from './pages/Configuracoes';
 import GerenciarCargos from './pages/GerenciarCargos';
 import GerenciarUbs from './pages/GerenciarUbs';
 import AuthCallback from './pages/AuthCallback';
@@ -105,7 +106,7 @@ function App() {
           <main className="bg-gray-50 dark:bg-slate-950 min-h-screen page-enter">
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Login isDark={isDark} onToggleTheme={handleToggleTheme} />} />
               <Route path="/register" element={<Register />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               
@@ -220,6 +221,12 @@ function App() {
                   <UbsGate>
                     <RedefinirSenha />
                   </UbsGate>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/configuracoes" element={
+                <ProtectedRoute>
+                  <Configuracoes />
                 </ProtectedRoute>
               } />
             </Routes>

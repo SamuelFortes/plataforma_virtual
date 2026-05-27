@@ -711,6 +711,64 @@ async def confirm_welcome_email_sent(
     return {"message": "Status de boas-vindas atualizado"}
 
 
+# ─── Alterar senha (self-service) ────────────────────────────────────
+
+class ChangePasswordRequest(BaseModel):
+    senha_atual: str | None = None
+    nova_senha: str = Field(..., min_length=8, max_length=100)
+    confirmar_nova_senha: str = Field(..., min_length=8, max_length=100)
+
+    @field_validator("nova_senha")
+    @classmethod
+    def validate_nova_senha(cls, v):
+        if len(v) < 8:
+            raise ValueError("Senha deve ter no mínimo 8 caracteres")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Senha deve conter pelo menos uma letra maiúscula")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Senha deve conter pelo menos uma letra minúscula")
+        if not re.search(r"\d", v):
+            raise ValueError("Senha deve conter pelo menos um número")
+        return v
+
+
+@auth_router.post("/change-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
+async def change_password(
+    request: Request,
+    payload: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_active_user),
+):
+    if payload.nova_senha != payload.confirmar_nova_senha:
+        raise HTTPException(status_code=400, detail="As senhas não conferem.")
+
+    # Verifica se o usuário já fez algum login bem-sucedido via email/senha
+    resultado = await db.execute(
+        select(LoginAttempt).where(
+            LoginAttempt.email == current_user.email,
+            LoginAttempt.sucesso == True,
+        ).limit(1)
+    )
+    has_email_login = resultado.scalar_one_or_none() is not None
+
+    if has_email_login:
+        # Usuário com senha própria: exige confirmação da senha atual
+        if not payload.senha_atual:
+            raise HTTPException(status_code=400, detail="Informe sua senha atual.")
+        if not verify_password(payload.senha_atual, current_user.senha):
+            raise HTTPException(status_code=401, detail="Senha atual incorreta.")
+    else:
+        # Usuário Google-only: permite definir senha sem confirmar a atual,
+        # mas se informou a atual, valida mesmo assim
+        if payload.senha_atual and not verify_password(payload.senha_atual, current_user.senha):
+            raise HTTPException(status_code=401, detail="Senha atual incorreta.")
+
+    current_user.senha = hash_password(payload.nova_senha)
+    await db.commit()
+    return {"message": "Senha alterada com sucesso."}
+
+
 # ─── Google OAuth ────────────────────────────────────────────────────
 
 @auth_router.get("/google/login")

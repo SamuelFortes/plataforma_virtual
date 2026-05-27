@@ -79,22 +79,12 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 <img
                   src="/logo.jpeg"
                   alt="MeuTerritório"
-                  className="h-11 sm:h-13 w-auto object-contain transition-opacity duration-200 group-hover:opacity-80"
-                  style={{ height: '44px' }}
+                  className="h-12 sm:h-14 w-auto object-contain transition-opacity duration-200 group-hover:opacity-80"
                 />
               </div>
-              <div className="flex flex-col leading-none min-w-0">
-                <span className="text-base sm:text-lg font-extrabold tracking-tight whitespace-nowrap">
-                  <span className="text-[#1a3764] dark:text-blue-400">Meu</span><span className="text-[#0097a7] dark:text-cyan-400">Território</span>
-                </span>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="h-px w-3 bg-green-500 shrink-0" />
-                  <span className="text-[9px] sm:text-[10px] tracking-[0.08em] text-gray-400 dark:text-slate-500 uppercase font-medium whitespace-nowrap">
-                    conectar · conhecer · cuidar
-                  </span>
-                  <span className="h-px w-3 bg-[#1a3764] dark:bg-blue-400 shrink-0" />
-                </div>
-              </div>
+              <span className="text-base sm:text-lg font-extrabold tracking-tight whitespace-nowrap">
+                <span className="text-[#1a3764] dark:text-blue-300">Meu</span><span className="text-[#0097a7] dark:text-teal-300">Território</span>
+              </span>
             </Link>
 
             <div className="hidden md:flex items-center space-x-1">
@@ -177,7 +167,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-slate-700 z-50">
                   <Link
-                    to="/redefinir-senha"
+                    to="/configuracoes"
                     className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                     onClick={() => setIsUserMenuOpen(false)}
                   >

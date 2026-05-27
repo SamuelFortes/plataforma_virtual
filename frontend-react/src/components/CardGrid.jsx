@@ -26,7 +26,7 @@ const CardGrid = () => {
       allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
     },
     {
-      title: 'Marcação de Consultas',
+      title: 'Marcação de Serviços',
       to: '/agendamento',
       icon: CalendarDaysIcon,
       inDevelopment: false,

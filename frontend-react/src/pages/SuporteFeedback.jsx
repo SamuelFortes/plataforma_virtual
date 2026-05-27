@@ -13,7 +13,7 @@ const faqItems = [
   {
     pergunta: 'Como marco uma consulta pelo sistema?',
     resposta:
-      'Acesse o módulo "Marcação de Consultas" no painel principal. Escolha a especialidade desejada, selecione o profissional disponível e confirme o horário. Você receberá uma confirmação na tela e poderá acompanhar o status pela aba "Minhas Consultas".',
+      'Acesse o módulo "Marcação de Serviços" no painel principal. Escolha a especialidade desejada, selecione o profissional disponível e confirme o horário. Você receberá uma confirmação na tela e poderá acompanhar o status pela aba "Minhas Consultas".',
   },
   {
     pergunta: 'Como altero ou recupero minha senha?',
