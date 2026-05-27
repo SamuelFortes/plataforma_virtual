@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -91,6 +91,14 @@ const UbsGate = ({ children }) => {
   return children;
 };
 
+const HIDE_NAV_PATHS = ['/login', '/register', '/auth/callback'];
+
+const ConditionalNavBar = (props) => {
+  const { pathname } = useLocation();
+  if (HIDE_NAV_PATHS.includes(pathname)) return null;
+  return <NavBar {...props} />;
+};
+
 function App() {
   const [isDark, setIsDark] = useState(false);
 
@@ -102,7 +110,7 @@ function App() {
     <NotificationsProvider>
       <div className={isDark ? 'dark' : ''}>
         <Router>
-          <NavBar isDark={isDark} onToggleTheme={handleToggleTheme} />
+          <ConditionalNavBar isDark={isDark} onToggleTheme={handleToggleTheme} />
           <main className="bg-gray-50 dark:bg-slate-950 min-h-screen page-enter">
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
