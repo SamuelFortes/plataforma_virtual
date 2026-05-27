@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 
 const OAUTH_ERRORS = {
   login_cancelado: 'Login com Google cancelado.',
@@ -12,7 +12,7 @@ const OAUTH_ERRORS = {
   dados_invalidos: 'Erro ao processar dados do login. Tente novamente.',
 };
 
-const Login = () => {
+const Login = ({ isDark, onToggleTheme }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -40,17 +40,27 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center px-4 py-8">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+        aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+      >
+        {isDark ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+      </button>
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <img
-            src="/logo.jpeg"
-            alt="MeuTerritório"
-            className="h-24 w-auto object-contain drop-shadow-md sm:h-28"
-          />
+          <div className="rounded-2xl overflow-hidden shadow-lg">
+            <img
+              src="/logo.jpeg"
+              alt="MeuTerritório"
+              className="h-28 w-auto object-contain sm:h-32"
+            />
+          </div>
           <div className="mt-2 flex flex-col items-center leading-tight">
             <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              <span className="text-[#1a3764] dark:text-blue-400">Meu</span><span className="text-[#0097a7] dark:text-cyan-400">Território</span>
+              <span className="text-[#1a3764] dark:text-blue-300">Meu</span><span className="text-[#0097a7] dark:text-teal-300">Território</span>
             </span>
             <div className="flex items-center gap-2 mt-1">
               <span className="h-px w-5 bg-green-500 shrink-0" />

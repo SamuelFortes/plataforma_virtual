@@ -118,7 +118,7 @@ const Register = () => {
           <img src="/logo.jpeg" alt="MeuTerritório" className="h-20 w-auto object-contain sm:h-24 drop-shadow-md" />
           <div className="mt-2 flex flex-col items-center leading-tight">
             <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              <span className="text-[#1a3764] dark:text-blue-400">Meu</span><span className="text-[#0097a7] dark:text-cyan-400">Território</span>
+              <span className="text-[#1a3764] dark:text-blue-300">Meu</span><span className="text-[#0097a7] dark:text-teal-300">Território</span>
             </span>
             <div className="flex items-center gap-2 mt-1">
               <span className="h-px w-5 bg-green-500 shrink-0" />
