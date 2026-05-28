@@ -771,7 +771,7 @@ async def get_full_diagnosis(
 async def list_ubs_problems(
     ubs_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     ubs = await _get_ubs_or_404(ubs_id, current_user, db)
     resultado = await db.execute(
@@ -791,7 +791,7 @@ async def create_ubs_problem(
     ubs_id: int,
     payload: UBSProblemCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     ubs = await _get_ubs_or_404(ubs_id, current_user, db)
     score = _gut_score(payload.gut_gravidade, payload.gut_urgencia, payload.gut_tendencia)
@@ -835,7 +835,7 @@ async def update_ubs_problem(
     problem_id: int,
     payload: UBSProblemUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     problem = await _get_problem_or_404(problem_id, current_user, db)
     dados_atualizacao = payload.model_dump(exclude_unset=True)
@@ -856,7 +856,7 @@ async def update_ubs_problem(
 async def delete_ubs_problem(
     problem_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     problem = await _get_problem_or_404(problem_id, current_user, db)
     await db.delete(problem)
@@ -874,7 +874,7 @@ async def delete_ubs_problem(
 async def list_problem_interventions(
     problem_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     problem = await _get_problem_or_404(problem_id, current_user, db)
     resultado = await db.execute(
@@ -894,7 +894,7 @@ async def create_problem_intervention(
     problem_id: int,
     payload: UBSInterventionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     problem = await _get_problem_or_404(problem_id, current_user, db)
     intervention = UBSIntervention(
@@ -935,7 +935,7 @@ async def update_intervention(
     intervention_id: int,
     payload: UBSInterventionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     intervention = await _get_intervention_or_404(intervention_id, current_user, db)
     dados_atualizacao = payload.model_dump(exclude_unset=True)
@@ -952,7 +952,7 @@ async def update_intervention(
 async def delete_intervention(
     intervention_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     intervention = await _get_intervention_or_404(intervention_id, current_user, db)
     await db.delete(intervention)
@@ -967,7 +967,7 @@ async def delete_intervention(
 async def list_intervention_actions(
     intervention_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     intervention = await _get_intervention_or_404(intervention_id, current_user, db)
     resultado = await db.execute(
@@ -987,7 +987,7 @@ async def create_intervention_action(
     intervention_id: int,
     payload: UBSInterventionActionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     intervention = await _get_intervention_or_404(intervention_id, current_user, db)
     action = UBSInterventionAction(
@@ -1029,7 +1029,7 @@ async def update_intervention_action(
     action_id: int,
     payload: UBSInterventionActionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     action = await _get_action_or_404(action_id, current_user, db)
     dados_atualizacao = payload.model_dump(exclude_unset=True)
@@ -1046,7 +1046,7 @@ async def update_intervention_action(
 async def delete_intervention_action(
     action_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_professional_user),
+    current_user: Usuario = Depends(get_current_active_user),
 ):
     action = await _get_action_or_404(action_id, current_user, db)
     await db.delete(action)
