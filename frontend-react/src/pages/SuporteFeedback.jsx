@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNotifications } from '../components/ui/Notifications';
 import { suporteFeedbackService } from '../services/suporteFeedbackService';
 import {
@@ -6,7 +6,23 @@ import {
   QuestionMarkCircleIcon,
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon,
+  InboxIcon,
+  CheckCircleIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
+
+const assuntoLabel = { duvida: 'Dúvida', sugestao: 'Sugestão', problema: 'Problema Técnico' };
+const assuntoBadge = {
+  duvida: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  sugestao: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  problema: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+};
+
+const formatarData = (dateStr) =>
+  new Date(dateStr).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
 
 // ─── Dados mock do FAQ ───────────────────────────────────────────────
 const faqItems = [
@@ -78,6 +94,11 @@ const AccordionItem = ({ pergunta, resposta, isOpen, onToggle }) => {
 const SuporteFeedback = () => {
   const { notify } = useNotifications();
 
+  const currentUser = (() => {
+    try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+  })();
+  const isGestor = (currentUser?.role || 'USER').toUpperCase() === 'GESTOR';
+
   // Estado do FAQ: qual item está aberto (-1 = nenhum)
   const [openFaq, setOpenFaq] = useState(-1);
 
@@ -87,6 +108,34 @@ const SuporteFeedback = () => {
     mensagem: '',
   });
   const [enviando, setEnviando] = useState(false);
+
+  // Estado da caixa de mensagens (só GESTOR)
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [carregando, setCarregando] = useState(false);
+  const [atualizando, setAtualizando] = useState(null);
+
+  useEffect(() => {
+    if (!isGestor) return;
+    setCarregando(true);
+    suporteFeedbackService
+      .listarFeedbacks()
+      .then(setFeedbacks)
+      .catch(() => notify({ type: 'error', message: 'Erro ao carregar mensagens recebidas.' }))
+      .finally(() => setCarregando(false));
+  }, [isGestor]);
+
+  const handleToggleStatus = async (fb) => {
+    const novoStatus = fb.status === 'PENDENTE' ? 'LIDA' : 'PENDENTE';
+    setAtualizando(fb.id);
+    try {
+      const atualizado = await suporteFeedbackService.atualizarStatus(fb.id, novoStatus);
+      setFeedbacks((prev) => prev.map((f) => (f.id === fb.id ? atualizado : f)));
+    } catch {
+      notify({ type: 'error', message: 'Erro ao atualizar status da mensagem.' });
+    } finally {
+      setAtualizando(null);
+    }
+  };
 
   // Alterna o item do FAQ clicado (fecha se já estiver aberto)
   const toggleFaq = (index) => {
@@ -285,6 +334,116 @@ const SuporteFeedback = () => {
           </div>
         </section>
       </div>
+
+      {/* ── Seção de Mensagens Recebidas (apenas GESTOR) ─────────── */}
+      {isGestor && (
+        <section className="mt-8 rise-fade stagger-3">
+          <div className="bg-white dark:bg-slate-900 shadow-md rounded-lg overflow-hidden">
+            {/* Header */}
+            <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <InboxIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                    Mensagens Recebidas
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    Mensagens enviadas pelos usuários do sistema
+                  </p>
+                </div>
+                <span className="ml-auto text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2.5 py-1 rounded-full">
+                  {feedbacks.length} {feedbacks.length === 1 ? 'mensagem' : 'mensagens'}
+                </span>
+              </div>
+            </div>
+
+            {/* Conteúdo */}
+            <div className="p-4">
+              {carregando ? (
+                <div className="flex items-center justify-center py-12 gap-3 text-gray-500 dark:text-slate-400">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-sm">Carregando mensagens...</span>
+                </div>
+              ) : feedbacks.length === 0 ? (
+                <p className="text-center text-sm text-gray-500 dark:text-slate-400 py-10">
+                  Nenhuma mensagem recebida ainda.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {feedbacks.map((fb) => (
+                    <div
+                      key={fb.id}
+                      className={`border rounded-lg p-4 transition-colors ${
+                        fb.status === 'PENDENTE'
+                          ? 'border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/10'
+                          : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                      }`}
+                    >
+                      {/* Linha superior: usuário + data + assunto + status */}
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {fb.nome_usuario || 'Usuário desconhecido'}
+                        </span>
+                        {fb.email_usuario && (
+                          <span className="text-xs text-gray-500 dark:text-slate-400">
+                            ({fb.email_usuario})
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400 dark:text-slate-500 ml-auto">
+                          {formatarData(fb.created_at)}
+                        </span>
+                      </div>
+
+                      {/* Badge assunto */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${assuntoBadge[fb.assunto] || 'bg-gray-100 text-gray-600'}`}>
+                          {assuntoLabel[fb.assunto] || fb.assunto}
+                        </span>
+                        {fb.status === 'PENDENTE' ? (
+                          <span className="flex items-center gap-1 text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                            <ClockIcon className="h-3.5 w-3.5" /> Pendente
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+                            <CheckCircleIcon className="h-3.5 w-3.5" /> Lida
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Mensagem */}
+                      <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {fb.mensagem}
+                      </p>
+
+                      {/* Botão toggle status */}
+                      <div className="flex justify-end mt-3">
+                        <button
+                          onClick={() => handleToggleStatus(fb)}
+                          disabled={atualizando === fb.id}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
+                            fb.status === 'PENDENTE'
+                              ? 'bg-green-600 hover:bg-green-700 text-white disabled:bg-green-400'
+                              : 'bg-gray-200 hover:bg-gray-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 disabled:opacity-50'
+                          }`}
+                        >
+                          {atualizando === fb.id
+                            ? 'Salvando...'
+                            : fb.status === 'PENDENTE'
+                            ? 'Marcar como Lida'
+                            : 'Marcar como Pendente'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

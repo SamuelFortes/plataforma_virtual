@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '../components/ui/Notifications';
 import { isValidCpf, isValidEmail, validateName, validatePassword } from '../utils/validators';
 import { cargosService } from '../services/cargosService';
 
-const Register = () => {
+const Register = ({ isDark, onToggleTheme }) => {
   const [cargosDisponiveis, setCargosDisponiveis] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -112,14 +112,26 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex flex-col items-center">
-          <div className="overflow-hidden drop-shadow-md">
-            <img src="/logo.jpeg" alt="MeuTerritório" className="h-20 w-auto object-contain scale-[1.35] sm:scale-[1.15] sm:h-20" />
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 to-cyan-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+        aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+      >
+        {isDark ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+      </button>
+      <div className="w-full max-w-sm">
+        <div className="flex flex-col items-center mb-8">
+          <div className="rounded-2xl overflow-hidden shadow-lg">
+            <img
+              src="/logo.jpeg"
+              alt="MeuTerritório"
+              className="h-28 w-auto object-contain scale-[1.35] sm:scale-[1.15] sm:h-28"
+            />
           </div>
           <div className="mt-2 flex flex-col items-center leading-tight">
-            <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <span className="text-3xl sm:text-4xl font-extrabold tracking-tight">
               <span className="text-[#1a3764] dark:text-blue-300">Meu</span><span className="text-[#0097a7] dark:text-teal-300">Território</span>
             </span>
             <div className="flex items-center gap-2 mt-1">
@@ -130,141 +142,122 @@ const Register = () => {
               <span className="h-px w-5 bg-[#1a3764] dark:bg-blue-400 shrink-0" />
             </div>
           </div>
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 tracking-widest uppercase font-medium">
+            Crie sua conta
+          </p>
         </div>
-        <h2 className="mt-4 text-center text-2xl font-extrabold text-gray-900 dark:text-white">
-          Crie sua conta
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600 dark:text-slate-400">
-          Ou{' '}
-          <Link to="/login" className="font-medium text-cyan-600 hover:text-cyan-500">
-            faça login na sua conta existente
-          </Link>
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4" role="alert">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 px-8 py-8">
+          {error && (
+            <div className="mb-5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
 
+          <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="nome" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="nome" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Nome Completo
               </label>
-              <div className="mt-1">
-                <input
-                  id="nome"
-                  name="nome"
-                  type="text"
-                  required
-                  value={formData.nome}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Use apenas letras e espaços.</p>
+              <input
+                id="nome"
+                name="nome"
+                type="text"
+                required
+                value={formData.nome}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
+              />
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Use apenas letras e espaços.</p>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Email
               </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Informe um email valido.</p>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
+              />
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Informe um email valido.</p>
             </div>
 
             <div>
-              <label htmlFor="cpf" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="cpf" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 CPF (apenas números)
               </label>
-              <div className="mt-1">
-                <input
-                  id="cpf"
-                  name="cpf"
-                  type="text"
-                  required
-                  placeholder="000.000.000-00"
-                  value={formData.cpf}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">CPF valido (somente numeros ou com pontuacao).</p>
+              <input
+                id="cpf"
+                name="cpf"
+                type="text"
+                required
+                placeholder="000.000.000-00"
+                value={formData.cpf}
+                onChange={handleChange}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
+              />
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">CPF valido (somente numeros ou com pontuacao).</p>
             </div>
 
-
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="role" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Tipo de Perfil
               </label>
-              <div className="mt-1">
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={(e) => {
-                    const newRole = e.target.value;
-                    setFormData(prev => ({
-                      ...prev,
-                      role: newRole,
-                      cargo: newRole === 'PROFISSIONAL' ? prev.cargo : '',
-                    }));
-                  }}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                >
-                  <option value="USER">Usuário Comum</option>
-                  <option value="PROFISSIONAL">Profissional de Saúde</option>
-                  <option value="GESTOR">Gestor</option>
-                </select>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={(e) => {
+                  const newRole = e.target.value;
+                  setFormData(prev => ({
+                    ...prev,
+                    role: newRole,
+                    cargo: newRole === 'PROFISSIONAL' ? prev.cargo : '',
+                  }));
+                }}
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
+              >
+                <option value="USER">Usuário Comum</option>
+                <option value="PROFISSIONAL">Profissional de Saúde</option>
+                <option value="GESTOR">Gestor</option>
+              </select>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                 Selecione 'Gestor' apenas se tiver autorização administrativa.
               </p>
             </div>
 
             {formData.role === 'PROFISSIONAL' && (
               <div>
-                <label htmlFor="cargo" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="cargo" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Cargo na UBS
                 </label>
-                <div className="mt-1">
-                  <select
-                    id="cargo"
-                    name="cargo"
-                    value={formData.cargo}
-                    onChange={handleChange}
-                    required
-                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                  >
-                    <option value="">Selecione o cargo</option>
-                    {cargosDisponiveis.map(c => (
-                      <option key={c.id} value={c.nome}>{c.nome}</option>
-                    ))}
-                  </select>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Selecione seu cargo dentro da UBS.</p>
+                <select
+                  id="cargo"
+                  name="cargo"
+                  value={formData.cargo}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
+                >
+                  <option value="">Selecione o cargo</option>
+                  {cargosDisponiveis.map(c => (
+                    <option key={c.id} value={c.nome}>{c.nome}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Selecione seu cargo dentro da UBS.</p>
               </div>
             )}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Senha
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <input
                   id="password"
                   name="password"
@@ -272,28 +265,24 @@ const Register = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm pr-10"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 pr-11 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
+                  {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Minimo 8 caracteres, com letra maiuscula, minuscula e numero.</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Minimo 8 caracteres, com letra maiuscula, minuscula e numero.</p>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Confirmar Senha
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -301,33 +290,34 @@ const Register = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm pr-10"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 pr-11 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
+                  {showConfirmPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Repita exatamente a mesma senha.</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Repita exatamente a mesma senha.</p>
             </div>
 
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {loading ? 'Cadastrando...' : 'Cadastrar'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full flex justify-center py-2.5 px-4 rounded-lg text-sm font-semibold text-white bg-[#0097a7] hover:bg-[#00838f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {loading ? 'Cadastrando...' : 'Cadastrar'}
+            </button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            Já tem uma conta?{' '}
+            <Link to="/login" className="font-semibold text-cyan-600 hover:text-cyan-500">
+              Faça login
+            </Link>
+          </p>
         </div>
       </div>
     </div>
