@@ -136,7 +136,11 @@ const GestaoEquipesMicroareas = () => {
   const [microareaSearch, setMicroareaSearch] = useState('');
   const [microareaErrors, setMicroareaErrors] = useState({});
 
-  const loadCatalogs = useCallback(async () => {
+  // Carregamento inicial: UBS + acsUsers em paralelo, depois kpis/agentes/microareas
+  // em paralelo usando o ubsId local — sem esperar re-render do React entre as ondas.
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setUsingMockData(false);
     try {
       const [ubsData, acsData] = await Promise.all([
         ubsService.getSingleUbs(),
@@ -144,9 +148,38 @@ const GestaoEquipesMicroareas = () => {
       ]);
       setAcsUsers(Array.isArray(acsData) ? acsData : []);
       setUbsInfo(ubsData);
-      setSelectedUbsId(ubsData ? String(ubsData.id) : '');
-    } catch (error) {
-      notify({ type: 'warning', message: error.message || 'Não foi possível carregar a UBS.' });
+      const ubsId = ubsData ? String(ubsData.id) : '';
+      setSelectedUbsId(ubsId);
+
+      if (!ubsId) {
+        setKpis(MOCK_KPIS);
+        setAgentes([]);
+        setMicroareas([]);
+        return;
+      }
+
+      const [kpisData, agentesData, microareasData] = await Promise.all([
+        gestaoEquipesService.getKpis({ ubs_id: ubsId }),
+        gestaoEquipesService.getAgentes({ ubs_id: ubsId }),
+        gestaoEquipesService.getMicroareas({ ubs_id: ubsId }),
+      ]);
+      setKpis(kpisData || MOCK_KPIS);
+      setAgentes(Array.isArray(agentesData) && agentesData.length > 0 ? agentesData : []);
+      const normalized = Array.isArray(microareasData)
+        ? microareasData.map((microarea) => ({
+            ...microarea,
+            localidades: normalizeLocalidadesFromApi(microarea.localidades),
+          }))
+        : [];
+      setMicroareas(normalized);
+    } catch {
+      setKpis(MOCK_KPIS);
+      setAgentes(MOCK_AGENTES);
+      setMicroareas([]);
+      setUsingMockData(true);
+      notify({ type: 'warning', message: 'Usando dados de demonstração. Conexão com o servidor indisponível.' });
+    } finally {
+      setLoading(false);
     }
   }, [notify]);
 
@@ -181,12 +214,8 @@ const GestaoEquipesMicroareas = () => {
   }, [notify, selectedUbsId]);
 
   useEffect(() => {
-    loadCatalogs();
-  }, [loadCatalogs]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadAll();
+  }, [loadAll]);
 
   const microareaAgentIds = useMemo(() => {
     const map = new Map();

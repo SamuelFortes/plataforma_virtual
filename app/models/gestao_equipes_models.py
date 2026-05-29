@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, JSON, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -7,6 +7,7 @@ from app.database import Base
 
 class Microarea(Base):
     __tablename__ = "microareas"
+    __table_args__ = (Index("ix_microareas_ubs_id", "ubs_id"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     ubs_id = Column(Integer, ForeignKey("ubs.id", ondelete="CASCADE"), nullable=False)
@@ -26,6 +27,10 @@ class Microarea(Base):
 
 class AgenteSaude(Base):
     __tablename__ = "agentes_saude"
+    __table_args__ = (
+        Index("ix_agentes_saude_usuario_id", "usuario_id"),
+        Index("ix_agentes_saude_microarea_id", "microarea_id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)

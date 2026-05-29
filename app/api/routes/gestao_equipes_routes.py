@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc, update, or_
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 
 from app.database import get_db
@@ -110,7 +111,13 @@ async def listar_agentes(
     """Lista todos os agentes de saúde com dados da microárea."""
     _ensure_allowed(current_user)
 
-    stmt = select(AgenteSaude)
+    stmt = (
+        select(AgenteSaude)
+        .options(
+            selectinload(AgenteSaude.usuario),
+            selectinload(AgenteSaude.microarea),
+        )
+    )
     if ubs_id:
         stmt = (
             stmt.outerjoin(Microarea, AgenteSaude.microarea_id == Microarea.id)
@@ -126,14 +133,11 @@ async def listar_agentes(
 
     response = []
     for agente in agentes:
-        usuario = await db.get(Usuario, agente.usuario_id)
-        microarea = await db.get(Microarea, agente.microarea_id)
-
         resp = AgenteSaudeOut.model_validate(agente)
-        resp.nome = usuario.nome if usuario else None
-        resp.microarea_nome = microarea.nome if microarea else None
-        resp.familias = microarea.familias if microarea else 0
-        resp.pacientes = microarea.populacao if microarea else 0
+        resp.nome = agente.usuario.nome if agente.usuario else None
+        resp.microarea_nome = agente.microarea.nome if agente.microarea else None
+        resp.familias = agente.microarea.familias if agente.microarea else 0
+        resp.pacientes = agente.microarea.populacao if agente.microarea else 0
         response.append(resp)
 
     return response
