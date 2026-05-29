@@ -15,33 +15,37 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "suporte_feedback",
-        sa.Column("encerrado", sa.Boolean(), nullable=False, server_default="false"),
-    )
+    # Usa SQL direto com IF NOT EXISTS para ser idempotente caso o banco já tenha
+    # os objetos criados pelo create_all automático do SQLAlchemy.
+    op.execute(sa.text(
+        "ALTER TABLE suporte_feedback ADD COLUMN IF NOT EXISTS encerrado BOOLEAN NOT NULL DEFAULT false"
+    ))
 
-    op.create_table(
-        "suporte_feedback_mensagens",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("feedback_id", sa.Integer(), nullable=False),
-        sa.Column("autor_id", sa.Integer(), nullable=False),
-        sa.Column("conteudo", sa.Text(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-            nullable=True,
-        ),
-        sa.ForeignKeyConstraint(["feedback_id"], ["suporte_feedback.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["autor_id"], ["usuarios.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index("ix_sfm_feedback_id", "suporte_feedback_mensagens", ["feedback_id"])
-    op.create_index("ix_sfm_autor_id", "suporte_feedback_mensagens", ["autor_id"])
+    op.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS suporte_feedback_mensagens (
+            id SERIAL NOT NULL,
+            feedback_id INTEGER NOT NULL,
+            autor_id INTEGER NOT NULL,
+            conteudo TEXT NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            PRIMARY KEY (id),
+            FOREIGN KEY(feedback_id) REFERENCES suporte_feedback (id) ON DELETE CASCADE,
+            FOREIGN KEY(autor_id) REFERENCES usuarios (id)
+        )
+    """))
+
+    op.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_sfm_feedback_id ON suporte_feedback_mensagens (feedback_id)"
+    ))
+    op.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_sfm_autor_id ON suporte_feedback_mensagens (autor_id)"
+    ))
 
 
 def downgrade() -> None:
-    op.drop_index("ix_sfm_autor_id", table_name="suporte_feedback_mensagens")
-    op.drop_index("ix_sfm_feedback_id", table_name="suporte_feedback_mensagens")
-    op.drop_table("suporte_feedback_mensagens")
-    op.drop_column("suporte_feedback", "encerrado")
+    op.execute(sa.text("DROP INDEX IF EXISTS ix_sfm_autor_id"))
+    op.execute(sa.text("DROP INDEX IF EXISTS ix_sfm_feedback_id"))
+    op.execute(sa.text("DROP TABLE IF EXISTS suporte_feedback_mensagens"))
+    op.execute(sa.text(
+        "ALTER TABLE suporte_feedback DROP COLUMN IF EXISTS encerrado"
+    ))
