@@ -227,6 +227,8 @@ const GutInfoPanel = () => (
 
 const MapaProblemasIntervencoes = () => {
   const { notify, confirm } = useNotifications();
+  const userRole = (JSON.parse(localStorage.getItem('user') || '{}')?.role || 'USER').toUpperCase();
+  const canManage = ['PROFISSIONAL', 'GESTOR'].includes(userRole);
   const [ubsInfo, setUbsInfo] = useState(null);
   const [ubsId, setUbsId] = useState('');
   const [problems, setProblems] = useState([]);
@@ -828,7 +830,7 @@ const MapaProblemasIntervencoes = () => {
                       )}
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-2">
-                      <button
+                      {canManage && <button
                         onClick={(e) => handleToggleProblemStatus(problem, e)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
                           isResolvido
@@ -851,7 +853,7 @@ const MapaProblemasIntervencoes = () => {
                             Ativo
                           </>
                         )}
-                      </button>
+                      </button>}
                     </div>
                     {isSelected && !isResolvido && (
                       <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-blue-500 dark:bg-blue-400" />
@@ -864,7 +866,7 @@ const MapaProblemasIntervencoes = () => {
         </section>
 
         {/* ═══ PROBLEM EDIT PANEL ═══ */}
-        {selectedProblem && problemEditForm && (
+        {canManage && selectedProblem && problemEditForm && (
           <section className={`${cardClass} mt-6 p-6 rise-fade`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
               <SectionHeader
@@ -954,13 +956,15 @@ const MapaProblemasIntervencoes = () => {
                   subtitle={`Soluções para: ${selectedProblem.titulo}`}
                   iconColor="text-emerald-600 dark:text-emerald-400"
                 />
-                <button
-                  onClick={() => setShowInterventionForm(!showInterventionForm)}
-                  className={`shrink-0 ${showInterventionForm ? btnSecondary : btnPrimary} !w-auto !py-2.5 !text-xs`}
-                >
-                  {showInterventionForm ? <XMarkIcon className="h-4 w-4" /> : <PlusIcon className="h-4 w-4" />}
-                  <span className="hidden sm:inline">{showInterventionForm ? 'Cancelar' : 'Nova'}</span>
-                </button>
+                {canManage && (
+                  <button
+                    onClick={() => setShowInterventionForm(!showInterventionForm)}
+                    className={`shrink-0 ${showInterventionForm ? btnSecondary : btnPrimary} !w-auto !py-2.5 !text-xs`}
+                  >
+                    {showInterventionForm ? <XMarkIcon className="h-4 w-4" /> : <PlusIcon className="h-4 w-4" />}
+                    <span className="hidden sm:inline">{showInterventionForm ? 'Cancelar' : 'Nova'}</span>
+                  </button>
+                )}
               </div>
 
               {showInterventionForm && (
@@ -1017,7 +1021,7 @@ const MapaProblemasIntervencoes = () => {
               )}
 
               {/* Edit intervention inline */}
-              {selectedIntervention && interventionEditForm && (
+              {canManage && selectedIntervention && interventionEditForm && (
                 <div className="mt-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4 space-y-3 rise-fade">
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                     <PencilSquareIcon className="h-4 w-4 text-slate-400" />
@@ -1056,7 +1060,7 @@ const MapaProblemasIntervencoes = () => {
                   subtitle={selectedIntervention ? `Tarefas da intervenção selecionada` : 'Selecione uma intervenção'}
                   iconColor="text-violet-600 dark:text-violet-400"
                 />
-                {selectedIntervention && (
+                {canManage && selectedIntervention && (
                   <button
                     onClick={() => setShowActionForm(!showActionForm)}
                     className={`shrink-0 ${showActionForm ? btnSecondary : btnPrimary} !w-auto !py-2.5 !text-xs`}
@@ -1144,23 +1148,25 @@ const MapaProblemasIntervencoes = () => {
                               </span>
                             )}
                           </div>
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              onClick={() => setActionEditForm({
-                                id: action.id,
-                                acao: action.acao,
-                                prazo: action.prazo || '',
-                                status: action.status || 'PLANEJADO',
-                                observacoes: action.observacoes || '',
-                              })}
-                              className={btnSecondary + ' !py-1.5 !px-3 !text-xs'}
-                            >
-                              <PencilSquareIcon className="h-3.5 w-3.5" /> Editar
-                            </button>
-                            <button onClick={() => handleDeleteAction(action.id)} className={btnDanger + ' !py-1.5 !px-3 !text-xs'}>
-                              <TrashIcon className="h-3.5 w-3.5" /> Excluir
-                            </button>
-                          </div>
+                          {canManage && (
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                onClick={() => setActionEditForm({
+                                  id: action.id,
+                                  acao: action.acao,
+                                  prazo: action.prazo || '',
+                                  status: action.status || 'PLANEJADO',
+                                  observacoes: action.observacoes || '',
+                                })}
+                                className={btnSecondary + ' !py-1.5 !px-3 !text-xs'}
+                              >
+                                <PencilSquareIcon className="h-3.5 w-3.5" /> Editar
+                              </button>
+                              <button onClick={() => handleDeleteAction(action.id)} className={btnDanger + ' !py-1.5 !px-3 !text-xs'}>
+                                <TrashIcon className="h-3.5 w-3.5" /> Excluir
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
