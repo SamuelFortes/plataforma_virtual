@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 import logging
 from fastapi.responses import Response as FastAPIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete as sql_delete
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
@@ -773,10 +773,10 @@ async def list_ubs_problems(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user),
 ):
-    ubs = await _get_ubs_or_404(ubs_id, current_user, db)
     resultado = await db.execute(
         select(UBSProblem)
-        .where(UBSProblem.ubs_id == ubs.id)
+        .join(UBS, UBSProblem.ubs_id == UBS.id)
+        .where(UBSProblem.ubs_id == ubs_id, UBS.is_deleted.is_(False))
         .order_by(UBSProblem.gut_score.desc(), UBSProblem.created_at.desc())
     )
     return resultado.scalars().all()
@@ -807,7 +807,6 @@ async def create_ubs_problem(
     )
     db.add(problem)
     await db.commit()
-    await db.refresh(problem)
     return problem
 
 
@@ -858,8 +857,14 @@ async def delete_ubs_problem(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_professional_user),
 ):
-    problem = await _get_problem_or_404(problem_id, current_user, db)
-    await db.delete(problem)
+    exists = await db.scalar(
+        select(UBSProblem.id)
+        .join(UBS, UBSProblem.ubs_id == UBS.id)
+        .where(UBSProblem.id == problem_id, UBS.is_deleted.is_(False))
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail="Problema não encontrado")
+    await db.execute(sql_delete(UBSProblem).where(UBSProblem.id == problem_id))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
