@@ -223,6 +223,13 @@ const GutInfoPanel = () => (
   </div>
 );
 
+/* ─── cache sessionStorage ─── */
+const CACHE = {
+  get: (key) => { try { return JSON.parse(sessionStorage.getItem(key)); } catch { return null; } },
+  set: (key, val) => { try { sessionStorage.setItem(key, JSON.stringify(val)); } catch {} },
+  del: (key) => { try { sessionStorage.removeItem(key); } catch {} },
+};
+
 /* ─── componente principal ─── */
 
 const MapaProblemasIntervencoes = () => {
@@ -230,9 +237,21 @@ const MapaProblemasIntervencoes = () => {
   const userRole = (JSON.parse(localStorage.getItem('user') || '{}')?.role || 'USER').toUpperCase();
   const canManage = ['PROFISSIONAL', 'GESTOR'].includes(userRole);
   const [ubsInfo, setUbsInfo] = useState(null);
-  const [ubsId, setUbsId] = useState('');
-  const [problems, setProblems] = useState([]);
-  const [selectedProblemId, setSelectedProblemId] = useState(null);
+  const [ubsId, setUbsId] = useState(() => CACHE.get('pi_ubs') || '');
+  const [problems, setProblems] = useState(() => {
+    const id = CACHE.get('pi_ubs');
+    return id ? (CACHE.get(`pi_problems_${id}`) || []) : [];
+  });
+  const [loadingProblems, setLoadingProblems] = useState(() => {
+    const id = CACHE.get('pi_ubs');
+    return !id || !CACHE.get(`pi_problems_${id}`);
+  });
+  const [selectedProblemId, setSelectedProblemId] = useState(() => {
+    const id = CACHE.get('pi_ubs');
+    if (!id) return null;
+    const probs = CACHE.get(`pi_problems_${id}`);
+    return probs?.[0]?.id ?? null;
+  });
   const [interventions, setInterventions] = useState([]);
   const [selectedInterventionId, setSelectedInterventionId] = useState(null);
   const [actions, setActions] = useState([]);
@@ -260,30 +279,43 @@ const MapaProblemasIntervencoes = () => {
   /* ─── data loading ─── */
 
   const loadUbs = async () => {
+    const cachedId = CACHE.get('pi_ubs');
+    if (cachedId) setUbsId(cachedId); // dispara loadProblems imediatamente com cache
     try {
       const data = await ubsService.getSingleUbs();
       setUbsInfo(data);
-      setUbsId(data ? String(data.id) : '');
+      const id = data ? String(data.id) : '';
+      CACHE.set('pi_ubs', id);
+      setUbsId(id); // se igual ao cached, React não re-executa o effect
     } catch (error) {
       setUbsInfo(null);
-      setUbsId('');
+      if (!cachedId) setUbsId('');
       notify({ type: 'error', message: 'Erro ao carregar UBS.' });
     }
   };
 
-  const loadProblems = async (ubsId) => {
-    if (!ubsId) return;
+  const loadProblems = async (id) => {
+    if (!id) return;
+    const cacheKey = `pi_problems_${id}`;
+    const cached = CACHE.get(cacheKey);
+    if (cached) {
+      // mostra dados em cache imediatamente
+      setProblems(cached);
+      setLoadingProblems(false);
+      setSelectedProblemId(cached.length > 0 ? cached[0].id : null);
+    } else {
+      setLoadingProblems(true);
+    }
     try {
-      const data = await api.request(`/ubs/${ubsId}/problems`, { requiresAuth: true });
+      const data = await api.request(`/ubs/${id}/problems`, { requiresAuth: true });
       const items = Array.isArray(data) ? data : [];
+      CACHE.set(cacheKey, items);
       setProblems(items);
-      if (items.length > 0) {
-        setSelectedProblemId(items[0].id);
-      } else {
-        setSelectedProblemId(null);
-      }
+      setLoadingProblems(false);
+      setSelectedProblemId(items.length > 0 ? items[0].id : null);
       setProblemEditForm(null);
     } catch (error) {
+      setLoadingProblems(false);
       setProblems([]);
       setSelectedProblemId(null);
       notify({ type: 'error', message: 'Erro ao carregar problemas.' });
@@ -296,17 +328,20 @@ const MapaProblemasIntervencoes = () => {
       setSelectedInterventionId(null);
       return;
     }
+    const cacheKey = `pi_interventions_${problemId}`;
+    const cached = CACHE.get(cacheKey);
+    if (cached) {
+      setInterventions(cached);
+      setSelectedInterventionId(cached.length > 0 ? cached[0].id : null);
+    }
     try {
       const data = await api.request(`/ubs/problems/${problemId}/interventions`, {
         requiresAuth: true,
       });
       const items = Array.isArray(data) ? data : [];
+      CACHE.set(cacheKey, items);
       setInterventions(items);
-      if (items.length > 0) {
-        setSelectedInterventionId(items[0].id);
-      } else {
-        setSelectedInterventionId(null);
-      }
+      setSelectedInterventionId(items.length > 0 ? items[0].id : null);
       setInterventionEditForm(null);
     } catch (error) {
       setInterventions([]);
@@ -387,6 +422,7 @@ const MapaProblemasIntervencoes = () => {
       notify({ type: 'success', message: 'Problema registrado.' });
       setProblemForm(emptyProblemForm);
       setShowProblemForm(false);
+      CACHE.del(`pi_problems_${ubsId}`);
       await loadProblems(ubsId);
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao salvar problema.' });
@@ -408,6 +444,7 @@ const MapaProblemasIntervencoes = () => {
         },
       });
       notify({ type: 'success', message: 'Problema atualizado.' });
+      CACHE.del(`pi_problems_${ubsId}`);
       await loadProblems(ubsId);
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao atualizar problema.' });
@@ -423,6 +460,7 @@ const MapaProblemasIntervencoes = () => {
         requiresAuth: true,
         body: { status: newStatus },
       });
+      CACHE.del(`pi_problems_${ubsId}`);
       await loadProblems(ubsId);
     } catch {
       notify({ type: 'error', message: 'Erro ao atualizar status do problema.' });
@@ -443,6 +481,7 @@ const MapaProblemasIntervencoes = () => {
         requiresAuth: true,
       });
       notify({ type: 'success', message: 'Problema removido.' });
+      CACHE.del(`pi_problems_${ubsId}`);
       await loadProblems(ubsId);
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao remover problema.' });
@@ -461,6 +500,7 @@ const MapaProblemasIntervencoes = () => {
       notify({ type: 'success', message: 'Intervenção criada.' });
       setInterventionForm(emptyInterventionForm);
       setShowInterventionForm(false);
+      CACHE.del(`pi_interventions_${selectedProblem.id}`);
       await loadInterventions(selectedProblem.id);
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao criar intervenção.' });
@@ -476,6 +516,7 @@ const MapaProblemasIntervencoes = () => {
         body: interventionEditForm,
       });
       notify({ type: 'success', message: 'Intervenção atualizada.' });
+      CACHE.del(`pi_interventions_${selectedProblem.id}`);
       await loadInterventions(selectedProblem.id);
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao atualizar intervenção.' });
@@ -496,6 +537,7 @@ const MapaProblemasIntervencoes = () => {
         requiresAuth: true,
       });
       notify({ type: 'success', message: 'Intervenção removida.' });
+      CACHE.del(`pi_interventions_${selectedProblem.id}`);
       await loadInterventions(selectedProblem.id);
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao remover intervenção.' });
@@ -776,7 +818,21 @@ const MapaProblemasIntervencoes = () => {
           )}
 
           {/* Problem list */}
-          {problems.length === 0 ? (
+          {loadingProblems ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 animate-pulse">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3" />
+                    <div className="h-8 w-14 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                  </div>
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-full mb-2" />
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-3/4 mb-4" />
+                  <div className="h-6 bg-slate-100 dark:bg-slate-800 rounded-full w-20" />
+                </div>
+              ))}
+            </div>
+          ) : problems.length === 0 ? (
             <EmptyState
               icon={ClipboardDocumentCheckIcon}
               message='Nenhum problema registrado. Clique em "Novo problema" para começar a mapear os desafios da sua unidade.'
