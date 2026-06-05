@@ -215,9 +215,9 @@ const ScheduleReadOnly = ({ data, prefix = 'cronograma_ubs', emptyLabel = 'Crono
                     {isEmpty ? (
                       <span className="text-slate-300 dark:text-slate-700 select-none">—</span>
                     ) : (
-                      <ul className="space-y-0.5">
+                      <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                         {items.map((item, i) => (
-                          <li key={i} className="leading-snug text-slate-700 dark:text-slate-300 flex items-start gap-1">
+                          <li key={i} className="py-1.5 leading-snug text-slate-700 dark:text-slate-300 flex items-start gap-1.5">
                             <span className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${shift === 'manha' ? 'bg-sky-400' : 'bg-amber-400'}`} />
                             {item}
                           </li>

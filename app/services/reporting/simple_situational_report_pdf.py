@@ -116,7 +116,9 @@ def _bulleted_html(text: str) -> str:
     items = [line.strip() for line in str(text or "").split("\n") if line.strip()]
     if not items:
         return "-"
-    return "<br/>".join([f"&bull; {_escape_xml(_wrap_hard_tokens(item))}" for item in items])
+    separator = '<br/><font color="#CBD5E1">─────────────────</font><br/>'
+    parts = [f"&bull; {_escape_xml(_wrap_hard_tokens(item))}" for item in items]
+    return separator.join(parts)
 
 
 def _wrap_hard_tokens(text: str, chunk: int = 24) -> str:
