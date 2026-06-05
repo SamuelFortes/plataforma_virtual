@@ -1305,13 +1305,23 @@ const RelatoriosSituacionais = () => {
                                             </div>
                                             <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                                                 {isUserRole ? (
-                                                    <button
-                                                        onClick={() => { setDashboardReportId(report.id); setDashboardOpen(true); }}
-                                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold transition-colors shadow-sm"
-                                                    >
-                                                        <EyeIcon className="w-4 h-4" />
-                                                        Ver relatório
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => { setDashboardReportId(report.id); setDashboardOpen(true); }}
+                                                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold transition-colors shadow-sm"
+                                                        >
+                                                            <EyeIcon className="w-4 h-4" />
+                                                            Ver relatório
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleExport(report.id)}
+                                                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm font-semibold transition-colors"
+                                                            title="Exportar PDF"
+                                                        >
+                                                            <DocumentArrowDownIcon className="w-4 h-4" />
+                                                            PDF
+                                                        </button>
+                                                    </>
                                                 ) : (
                                                     <>
                                                         <button

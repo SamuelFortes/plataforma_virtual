@@ -15,6 +15,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   DocumentTextIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -250,6 +251,30 @@ const RelatorioPublicoDashboard = ({ isOpen, onClose, reportId }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportPdf = () => {
+    if (!reportId || exporting) return;
+    setExporting(true);
+    const token = localStorage.getItem('token');
+    axios
+      .get(`/api/ubs/${reportId}/export/pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      })
+      .then((res) => {
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `relatorio_${reportId}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(() => alert('Erro ao exportar o relatório em PDF. Tente novamente.'))
+      .finally(() => setExporting(false));
+  };
 
   useEffect(() => {
     if (!isOpen || !reportId) return;
@@ -315,13 +340,31 @@ const RelatorioPublicoDashboard = ({ isOpen, onClose, reportId }) => {
                 </div>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              aria-label="Fechar"
-            >
-              <XMarkIcon className="h-5 w-5 text-white" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleExportPdf}
+                disabled={exporting || loading || !data}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-white text-sm font-medium"
+                title="Exportar PDF"
+              >
+                {exporting ? (
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                ) : (
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">{exporting ? 'Gerando…' : 'Exportar PDF'}</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Fechar"
+              >
+                <XMarkIcon className="h-5 w-5 text-white" />
+              </button>
+            </div>
           </div>
 
           {/* Meta-info strip */}
