@@ -171,47 +171,57 @@ const ServiceBadge = ({ name }) => (
   </div>
 );
 
-const ScheduleReadOnly = ({ data }) => {
+const ScheduleReadOnly = ({ data, prefix = 'cronograma_ubs', emptyLabel = 'Cronograma não cadastrado neste relatório.' }) => {
   const hasAnyActivity = DAYS.some(
-    (d) => parseActivities(data?.[`cronograma_ubs_${d}_manha`]).length > 0 ||
-            parseActivities(data?.[`cronograma_ubs_${d}_tarde`]).length > 0
+    (d) => parseActivities(data?.[`${prefix}_${d}_manha`]).length > 0 ||
+            parseActivities(data?.[`${prefix}_${d}_tarde`]).length > 0
   );
 
   if (!hasAnyActivity) return (
-    <p className="text-sm text-slate-400 dark:text-slate-500 italic py-4 text-center">Cronograma não cadastrado neste relatório.</p>
+    <p className="text-sm text-slate-400 dark:text-slate-500 italic py-4 text-center">{emptyLabel}</p>
   );
 
   return (
-    <div className="overflow-x-auto -mx-1">
-      <table className="min-w-full text-xs">
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-xs border-separate border-spacing-0">
         <thead>
           <tr>
-            <th className="w-16 py-2 text-left text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wide pr-3">Turno</th>
+            <th className="w-20 py-2 pl-1 text-left text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-wide text-[10px]">Turno</th>
             {DAYS.map((d) => (
-              <th key={d} className="py-2 px-2 text-center text-slate-600 dark:text-slate-300 font-bold">{DAY_LABELS[d]}</th>
+              <th key={d} className="py-2 px-2 text-center text-slate-600 dark:text-slate-300 font-bold text-[11px] tracking-widest">{DAY_LABELS[d]}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        <tbody>
           {['manha', 'tarde'].map((shift) => (
             <tr key={shift}>
-              <td className="py-3 pr-3">
-                <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold ${shift === 'manha' ? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300' : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'}`}>
-                  {shift === 'manha' ? '☀️ Manhã' : '🌤 Tarde'}
+              <td className="py-2 pr-2 align-middle">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap
+                  ${shift === 'manha'
+                    ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
+                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'}`}>
+                  {shift === 'manha' ? '☀️ Manhã' : '🌅 Tarde'}
                 </span>
               </td>
               {DAYS.map((d) => {
-                const items = parseActivities(data?.[`cronograma_ubs_${d}_${shift}`]);
+                const items = parseActivities(data?.[`${prefix}_${d}_${shift}`]);
+                const isEmpty = items.length === 0;
                 return (
-                  <td key={d} className="py-3 px-2 align-top">
-                    {items.length > 0 ? (
-                      <ul className="space-y-1">
+                  <td key={d} className={`py-2 px-2 align-top rounded-lg text-xs
+                    ${shift === 'manha'
+                      ? 'bg-sky-50/60 dark:bg-sky-900/10'
+                      : 'bg-amber-50/60 dark:bg-amber-900/10'}`}>
+                    {isEmpty ? (
+                      <span className="text-slate-300 dark:text-slate-700 select-none">—</span>
+                    ) : (
+                      <ul className="space-y-0.5">
                         {items.map((item, i) => (
-                          <li key={i} className="leading-tight text-slate-700 dark:text-slate-300">{item}</li>
+                          <li key={i} className="leading-snug text-slate-700 dark:text-slate-300 flex items-start gap-1">
+                            <span className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${shift === 'manha' ? 'bg-sky-400' : 'bg-amber-400'}`} />
+                            {item}
+                          </li>
                         ))}
                       </ul>
-                    ) : (
-                      <span className="text-slate-300 dark:text-slate-600">—</span>
                     )}
                   </td>
                 );
@@ -422,20 +432,42 @@ const RelatorioPublicoDashboard = ({ isOpen, onClose, reportId }) => {
                 </Section>
               )}
 
-              {/* ── Cronograma ── */}
-              <Section icon={ClockIcon} title="Cronograma de funcionamento">
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 overflow-x-auto">
-                  <ScheduleReadOnly data={ubs} />
-                  {ubs.cronograma_ubs_observacoes && (
-                    <p className="mt-4 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
-                      {ubs.cronograma_ubs_observacoes}
-                    </p>
-                  )}
-                </div>
-                {ubs.fluxo_agenda_acesso && (
-                  <div className="mt-3">
-                    <TextBlock label="Como funciona o acesso" text={ubs.fluxo_agenda_acesso} />
+              {/* ── Cronogramas ── */}
+              <Section icon={ClockIcon} title="Cronogramas de funcionamento">
+                {/* Cronograma da UBS */}
+                <div className="rounded-2xl border border-sky-200 dark:border-sky-800 bg-white dark:bg-slate-900 overflow-hidden mb-4">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-sky-50 dark:bg-sky-900/30 border-b border-sky-200 dark:border-sky-800">
+                    <span className="text-lg">🏥</span>
+                    <span className="text-sm font-semibold text-sky-800 dark:text-sky-300">Cronograma da UBS</span>
                   </div>
+                  <div className="p-4">
+                    <ScheduleReadOnly data={ubs} prefix="cronograma_ubs" emptyLabel="Cronograma da UBS não cadastrado." />
+                    {ubs.cronograma_ubs_observacoes && (
+                      <p className="mt-4 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
+                        📌 {ubs.cronograma_ubs_observacoes}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cronograma dos Residentes */}
+                <div className="rounded-2xl border border-violet-200 dark:border-violet-800 bg-white dark:bg-slate-900 overflow-hidden mb-4">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-violet-50 dark:bg-violet-900/30 border-b border-violet-200 dark:border-violet-800">
+                    <span className="text-lg">🎓</span>
+                    <span className="text-sm font-semibold text-violet-800 dark:text-violet-300">Cronograma dos Residentes</span>
+                  </div>
+                  <div className="p-4">
+                    <ScheduleReadOnly data={ubs} prefix="cronograma_residentes" emptyLabel="Cronograma dos residentes não cadastrado." />
+                    {ubs.cronograma_residentes_observacoes && (
+                      <p className="mt-4 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
+                        📌 {ubs.cronograma_residentes_observacoes}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {ubs.fluxo_agenda_acesso && (
+                  <TextBlock label="Como funciona o acesso" text={ubs.fluxo_agenda_acesso} />
                 )}
               </Section>
 

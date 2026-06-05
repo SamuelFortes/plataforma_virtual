@@ -23,6 +23,16 @@ SECTION_BG = colors.HexColor("#ECFEFF")
 PRIORITY_BG = colors.HexColor("#FEF3C7")
 SUCCESS_BG = colors.HexColor("#DCFCE7")
 WARNING_BG = colors.HexColor("#FEF9C3")
+# Cronograma UBS
+SCHED_UBS_HEADER_BG = colors.HexColor("#E0F2FE")   # sky-100
+SCHED_UBS_HEADER_TEXT = colors.HexColor("#0369A1")  # sky-700
+SCHED_UBS_MANHA = colors.HexColor("#E0F2FE")        # sky-100
+SCHED_UBS_TARDE = colors.HexColor("#FEF3C7")        # amber-100
+# Cronograma Residentes
+SCHED_RES_HEADER_BG = colors.HexColor("#EDE9FE")    # violet-100
+SCHED_RES_HEADER_TEXT = colors.HexColor("#6D28D9")  # violet-700
+SCHED_RES_MANHA = colors.HexColor("#EDE9FE")        # violet-100
+SCHED_RES_TARDE = colors.HexColor("#FCE7F3")        # pink-100
 
 
 def _escape_xml(text: str) -> str:
@@ -129,7 +139,26 @@ def _has_weekly_content(schedule: dict[str, dict[str, str]]) -> bool:
     return False
 
 
-def _calendar_day_blocks(manha: str, tarde: str, style_table: ParagraphStyle) -> Table:
+def _schedule_sub_header(label: str, emoji: str, bg_color, text_color, style_h3: ParagraphStyle) -> Table:
+    """Cabeçalho colorido para separar cronograma UBS do de residentes no PDF."""
+    cell = Paragraph(f"<b>{_escape_xml(emoji + '  ' + label)}</b>", style_h3)
+    table = Table([[cell]], colWidths=[16.5 * cm])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), bg_color),
+        ("TEXTCOLOR", (0, 0), (-1, -1), text_color),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+    ]))
+    return table
+
+
+def _calendar_day_blocks(manha: str, tarde: str, style_table: ParagraphStyle,
+                          color_manha=None, color_tarde=None) -> Table:
+    c_manha = color_manha or SCHED_UBS_MANHA
+    c_tarde = color_tarde or SCHED_UBS_TARDE
     data = [
         [Paragraph(f"<b>Manhã</b><br/>{_bulleted_html(manha)}", style_table)],
         [Paragraph(f"<b>Tarde</b><br/>{_bulleted_html(tarde)}", style_table)],
@@ -138,8 +167,8 @@ def _calendar_day_blocks(manha: str, tarde: str, style_table: ParagraphStyle) ->
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#E0F2FE")),
-                ("BACKGROUND", (0, 1), (0, 1), colors.HexColor("#DCFCE7")),
+                ("BACKGROUND", (0, 0), (0, 0), c_manha),
+                ("BACKGROUND", (0, 1), (0, 1), c_tarde),
                 ("BOX", (0, 0), (-1, -1), 0.35, TABLE_GRID),
                 ("INNERGRID", (0, 0), (-1, -1), 0.25, TABLE_GRID),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -153,19 +182,23 @@ def _calendar_day_blocks(manha: str, tarde: str, style_table: ParagraphStyle) ->
     return table
 
 
-def _calendar_like_weekly_table(schedule: dict[str, dict[str, str]], style_table: ParagraphStyle, style_table_header: ParagraphStyle) -> Table:
+def _calendar_like_weekly_table(schedule: dict[str, dict[str, str]], style_table: ParagraphStyle,
+                                  style_table_header: ParagraphStyle,
+                                  header_bg=None, color_manha=None, color_tarde=None) -> Table:
     headers = ["SEG", "TER", "QUA", "QUI", "SEX"]
     days = ["seg", "ter", "qua", "qui", "sex"]
+    h_bg = header_bg or TABLE_HEADER
     header_row = [Paragraph(_escape_xml(h), style_table_header) for h in headers]
     body_row = [
-        _calendar_day_blocks(schedule[d]["manha"], schedule[d]["tarde"], style_table)
+        _calendar_day_blocks(schedule[d]["manha"], schedule[d]["tarde"], style_table,
+                             color_manha=color_manha, color_tarde=color_tarde)
         for d in days
     ]
     table = Table([header_row, body_row], colWidths=[3.15 * cm, 3.15 * cm, 3.15 * cm, 3.15 * cm, 3.15 * cm])
     table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), TABLE_HEADER),
+                ("BACKGROUND", (0, 0), (-1, 0), h_bg),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("TEXTCOLOR", (0, 0), (-1, 0), PRIMARY),
                 ("ALIGN", (0, 0), (-1, 0), "CENTER"),
@@ -461,20 +494,38 @@ def generate_situational_report_pdf_simple(
     obs_residentes = _weekly_observacoes_from_ubs(ubs, "cronograma_residentes")
 
     if _has_weekly_content(cronograma_ubs):
-        story.append(Paragraph("Cronograma da UBS", style_h3))
-        story.append(_calendar_like_weekly_table(cronograma_ubs, style_table, style_table_header))
+        story.append(_schedule_sub_header(
+            "Cronograma da UBS", "🏥",
+            SCHED_UBS_HEADER_BG, SCHED_UBS_HEADER_TEXT, style_h3,
+        ))
+        story.append(Spacer(1, 4))
+        story.append(_calendar_like_weekly_table(
+            cronograma_ubs, style_table, style_table_header,
+            header_bg=SCHED_UBS_HEADER_BG,
+            color_manha=SCHED_UBS_MANHA,
+            color_tarde=SCHED_UBS_TARDE,
+        ))
         if obs_ubs:
-            story.append(Spacer(1, 3))
-            story.append(Paragraph("Observações do cronograma da UBS", style_small))
+            story.append(Spacer(1, 4))
+            story.append(Paragraph("📌 Observações do cronograma da UBS", style_small))
             story.append(_boxed(obs_ubs, style_body))
-        story.append(Spacer(1, 8))
+        story.append(Spacer(1, 12))
 
     if _has_weekly_content(cronograma_residentes):
-        story.append(Paragraph("Cronograma dos Residentes da UFDPar", style_h3))
-        story.append(_calendar_like_weekly_table(cronograma_residentes, style_table, style_table_header))
+        story.append(_schedule_sub_header(
+            "Cronograma dos Residentes da UFDPar", "🎓",
+            SCHED_RES_HEADER_BG, SCHED_RES_HEADER_TEXT, style_h3,
+        ))
+        story.append(Spacer(1, 4))
+        story.append(_calendar_like_weekly_table(
+            cronograma_residentes, style_table, style_table_header,
+            header_bg=SCHED_RES_HEADER_BG,
+            color_manha=SCHED_RES_MANHA,
+            color_tarde=SCHED_RES_TARDE,
+        ))
         if obs_residentes:
-            story.append(Spacer(1, 3))
-            story.append(Paragraph("Observações do cronograma dos residentes", style_small))
+            story.append(Spacer(1, 4))
+            story.append(Paragraph("📌 Observações do cronograma dos residentes", style_small))
             story.append(_boxed(obs_residentes, style_body))
         story.append(Spacer(1, 8))
 
