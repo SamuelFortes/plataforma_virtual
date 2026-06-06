@@ -53,8 +53,8 @@ def _normalize_localidades(localidades):
 
 def _ensure_allowed(current_user: Usuario):
     role = (current_user.role or "USER").upper()
-    if role != "GESTOR" and current_user.cargo != "Recepcionista":
-        raise HTTPException(status_code=403, detail="Acesso restrito a gestores e recepção.")
+    if role not in ("GESTOR", "ADMIN"):
+        raise HTTPException(status_code=403, detail="Acesso restrito a gestores.")
 
 
 # ─── KPIs ─────────────────────────────────────────────────────────────

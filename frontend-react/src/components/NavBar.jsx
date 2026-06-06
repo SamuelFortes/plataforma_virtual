@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  BellIcon, 
-  ArrowRightOnRectangleIcon, 
+import {
+  BellIcon,
+  ArrowRightOnRectangleIcon,
   Squares2X2Icon,
   UserCircleIcon,
   BookOpenIcon,
@@ -16,7 +16,8 @@ import {
   KeyIcon,
   Cog6ToothIcon,
   BriefcaseIcon,
-  BuildingOffice2Icon
+  BuildingOffice2Icon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { ubsService } from '../services/ubsService';
 
@@ -36,8 +37,9 @@ const NavBar = ({ isDark, onToggleTheme }) => {
 
   const isActive = (path) => location.pathname === path;
   const role = (user?.role || 'USER').toUpperCase();
-  const roleLabel = role.toLowerCase();
-  const canSetupUbs = ['PROFISSIONAL', 'GESTOR'].includes(role);
+  const isAdmin = role === 'ADMIN';
+  const roleLabel = isAdmin ? 'Admin' : role.toLowerCase();
+  const canSetupUbs = ['PROFISSIONAL', 'GESTOR', 'ADMIN'].includes(role);
 
   useEffect(() => {
     let active = true;
@@ -100,7 +102,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 Dashboard
               </Link>
 
-              {(role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
+              {(isAdmin || role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
                 <Link
                   to="/notificacoes"
                   className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -114,7 +116,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                 </Link>
               )}
 
-              {(role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
+              {(isAdmin || role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
                 <Link
                   to="/gerenciar-mensagens"
                   className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -174,7 +176,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                     <Cog6ToothIcon className="w-4 h-4 mr-2" />
                     Configurações
                   </Link>
-                  {role === 'GESTOR' && (
+                  {(isAdmin || role === 'GESTOR') && (
                     <Link
                       to="/gerenciar-cargos"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -184,7 +186,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                       Cargos
                     </Link>
                   )}
-                  {role === 'GESTOR' && (
+                  {(isAdmin || role === 'GESTOR') && (
                     <Link
                       to="/gerenciar-ubs"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
@@ -192,6 +194,16 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                     >
                       <BuildingOffice2Icon className="w-4 h-4 mr-2" />
                       Gerenciar UBS
+                    </Link>
+                  )}
+                  {role === 'ADMIN' && (
+                    <Link
+                      to="/admin"
+                      className="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-semibold"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      <ShieldCheckIcon className="w-4 h-4 mr-2" />
+                      Painel Admin
                     </Link>
                   )}
                   <button

@@ -51,7 +51,7 @@ async def get_current_professional_user(
     db: AsyncSession = Depends(get_db),
 ) -> Usuario:
     role = (current_user.role or "USER").upper()
-    if role in ("PROFISSIONAL", "GESTOR"):
+    if role in ("PROFISSIONAL", "GESTOR", "ADMIN"):
         return current_user
 
     # Compatibilidade: se existir registro ativo em profissionais, também permite
@@ -70,6 +70,15 @@ async def get_current_gestor_user(
     current_user: Usuario = Depends(get_current_professional_user),
 ) -> Usuario:
     role = (current_user.role or "USER").upper()
-    if role != "GESTOR":
+    if role not in ("GESTOR", "ADMIN"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito ao gestor")
+    return current_user
+
+
+async def get_current_admin_user(
+    current_user: Usuario = Depends(get_current_active_user),
+) -> Usuario:
+    role = (current_user.role or "USER").upper()
+    if role != "ADMIN":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito ao administrador")
     return current_user

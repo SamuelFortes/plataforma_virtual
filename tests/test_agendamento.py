@@ -455,7 +455,7 @@ async def test_update_agendamento_recepcao_cancel(test_client):
     async with async_session() as session:
         prof = await _create_profissional(session, "prof_recep_cancel@example.com", cargo="Medico")
         owner = await _create_user(session, "owner_recep_cancel@example.com")
-        recep = await _create_user(session, "recep_cancel2@example.com", role="RECEPCAO")
+        recep = await _create_user(session, "recep_cancel2@example.com", role="PROFISSIONAL")
         agendamento = Agendamento(
             paciente_id=owner.id,
             profissional_id=prof.id,
@@ -560,7 +560,7 @@ async def test_recepcao_can_cancel_agendamento(test_client):
     async with async_session() as session:
         prof = await _create_profissional(session, "prof_cancel@example.com", cargo="Medico")
         owner = await _create_user(session, "owner_cancel@example.com")
-        recep = await _create_user(session, "recep_cancel@example.com", role="RECEPCAO")
+        recep = await _create_user(session, "recep_cancel@example.com", role="PROFISSIONAL")
         agendamento = Agendamento(
             paciente_id=owner.id,
             profissional_id=prof.id,
@@ -631,7 +631,7 @@ async def test_agenda_requires_dates(test_client):
     client, async_session = test_client
     async with async_session() as session:
         prof = await _create_profissional(session, "prof_need_dates@example.com", cargo="Medico")
-        staff = await _create_user(session, "staff_need_dates@example.com", role="RECEPCAO")
+        staff = await _create_user(session, "staff_need_dates@example.com", role="PROFISSIONAL")
         headers = _auth_headers(staff)
 
     response = await client.get(f"/api/agenda/profissional/{prof.id}", headers=headers)
@@ -658,7 +658,7 @@ async def test_agenda_filters_outside_range(test_client):
         )
         session.add_all([inside, outside])
         await session.commit()
-        staff = await _create_user(session, "staff_range@example.com", role="RECEPCAO")
+        staff = await _create_user(session, "staff_range@example.com", role="PROFISSIONAL")
         headers = _auth_headers(staff)
 
     start = datetime.now(timezone.utc).isoformat()
@@ -699,7 +699,7 @@ async def test_confirmacao_forbidden_user(test_client):
 async def test_confirmacao_not_found(test_client):
     client, async_session = test_client
     async with async_session() as session:
-        recep = await _create_user(session, "recep_conf_nf@example.com", role="RECEPCAO")
+        recep = await _create_user(session, "recep_conf_nf@example.com", role="PROFISSIONAL")
         headers = _auth_headers(recep)
 
     response = await client.post("/api/agendamentos/99999/confirmar", headers=headers)
@@ -711,7 +711,7 @@ async def test_block_other_professional_requires_gestor(test_client):
     client, async_session = test_client
     async with async_session() as session:
         prof = await _create_profissional(session, "prof6@example.com", cargo="Medico")
-        recep = await _create_user(session, "recep@example.com", role="RECEPCAO")
+        recep = await _create_user(session, "recep@example.com", role="PROFISSIONAL")
         headers = _auth_headers(recep)
 
     payload = {
@@ -1086,7 +1086,7 @@ async def test_confirmacao_registers_timestamp(test_client):
     async with async_session() as session:
         prof = await _create_profissional(session, "prof7@example.com", cargo="Medico")
         paciente = await _create_user(session, "user5@example.com")
-        recep = await _create_user(session, "recep2@example.com", role="RECEPCAO")
+        recep = await _create_user(session, "recep2@example.com", role="PROFISSIONAL")
         agendamento = Agendamento(
             paciente_id=paciente.id,
             profissional_id=prof.id,

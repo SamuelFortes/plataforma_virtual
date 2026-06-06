@@ -19,7 +19,7 @@ from app.database import get_db
 from app.models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest, Cargo
 from app.utils.jwt_handler import create_access_token
 from app.utils.cpf_validator import validate_cpf
-from app.utils.deps import get_current_active_user, get_current_gestor_user
+from app.utils.deps import get_current_active_user, get_current_gestor_user, get_current_admin_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -62,17 +62,7 @@ class UsuarioCreate(BaseModel):
     email: EmailStr
     senha: str = Field(..., min_length=8, max_length=100)
     cpf: str = Field(..., min_length=11, max_length=14)
-    role: Literal["USER", "PROFISSIONAL", "GESTOR"] = "USER"
-    cargo: str | None = Field(None, max_length=100)
 
-    @field_validator('cargo')
-    @classmethod
-    def validate_cargo(cls, v, info):
-        role = info.data.get('role', 'USER')
-        if role == 'PROFISSIONAL' and not v:
-            raise ValueError('Cargo é obrigatório para profissionais')
-        return v
-    
     @field_validator('nome')
     @classmethod
     def validate_nome(cls, v):
@@ -81,14 +71,14 @@ class UsuarioCreate(BaseModel):
         if not re.match(r'^[a-zA-ZÀ-ÿ\s]+$', v):
             raise ValueError('Nome deve conter apenas letras')
         return v.strip()
-    
+
     @field_validator('cpf')
     @classmethod
     def validate_cpf_field(cls, v):
         if not validate_cpf(v):
             raise ValueError('CPF inválido')
         return ''.join(filter(str.isdigit, v))
-    
+
     @field_validator('senha')
     @classmethod
     def validate_senha(cls, v):
@@ -299,15 +289,10 @@ async def reset_login_attempts(db: AsyncSession, user: Usuario):
 @auth_router.post("/register", response_model=UsuarioOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 async def register_user(
-    request: Request, 
-    payload: UsuarioCreate, 
+    request: Request,
+    payload: UsuarioCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    if payload.cargo:
-        resultado = await db.execute(select(Cargo).where(Cargo.nome == payload.cargo))
-        if not resultado.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail=f"Cargo '{payload.cargo}' não existe. Consulte os cargos disponíveis.")
-
     resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
     if resultado.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email já cadastrado")
@@ -321,8 +306,8 @@ async def register_user(
         email=payload.email,
         senha=hash_password(payload.senha),
         cpf=payload.cpf,
-        role=payload.role,
-        cargo=payload.cargo if payload.role == "PROFISSIONAL" else None,
+        role="USER",
+        cargo=None,
         welcome_email_sent=False,
     )
     db.add(usuario)
@@ -334,9 +319,9 @@ async def register_user(
         nome=usuario.nome,
         email=usuario.email,
         cpf=usuario.cpf,
-        is_profissional=usuario.role in ("PROFISSIONAL", "GESTOR"),
-        role=usuario.role or "USER",
-        cargo=usuario.cargo,
+        is_profissional=False,
+        role="USER",
+        cargo=None,
     )
 
 
@@ -346,11 +331,8 @@ async def create_acs_user(
     request: Request,
     payload: AcsUserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_gestor_user),
 ):
-    role = (current_user.role or "USER").upper()
-    if role != "GESTOR" and current_user.cargo != "Recepcionista":
-        raise HTTPException(status_code=403, detail="Acesso restrito à recepção ou gestão")
 
     resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
     if resultado.scalar_one_or_none():
@@ -390,11 +372,8 @@ async def reset_password_internal(
     request: Request,
     payload: PasswordResetInternal,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_gestor_user),
 ):
-    role = (current_user.role or "USER").upper()
-    if role != "GESTOR" and current_user.cargo != "Recepcionista":
-        raise HTTPException(status_code=403, detail="Acesso restrito à recepção ou gestão")
 
     resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
     usuario = resultado.scalar_one_or_none()
@@ -674,10 +653,8 @@ async def reject_professional_request(
 @auth_router.get("/users/pending-welcome", response_model=list[UserSummaryOut])
 async def list_pending_welcome_users(
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_gestor_user),
 ):
-    if current_user.role != "GESTOR" and current_user.cargo != "Recepcionista":
-        raise HTTPException(status_code=403, detail="Acesso restrito à Recepção ou Gestão")
 
     resultado = await db.execute(
         select(Usuario)
@@ -694,10 +671,8 @@ async def list_pending_welcome_users(
 async def confirm_welcome_email_sent(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user),
+    current_user: Usuario = Depends(get_current_gestor_user),
 ):
-    if current_user.role != "GESTOR" and current_user.cargo != "Recepcionista":
-        raise HTTPException(status_code=403, detail="Acesso restrito à Recepção ou Gestão")
 
     resultado = await db.execute(select(Usuario).where(Usuario.id == user_id))
     usuario = resultado.scalar_one_or_none()
@@ -886,6 +861,62 @@ async def google_callback(
     return RedirectResponse(
         f"{_FRONTEND_URL}/auth/callback?token={urllib.parse.quote(token)}&user={user_data}"
     )
+
+
+# ─── Painel ADMIN ────────────────────────────────────────────────────
+
+class UserAdminOut(BaseModel):
+    id: int
+    nome: str
+    email: EmailStr
+    role: str
+    cargo: str | None = None
+    ativo: bool
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SetRolePayload(BaseModel):
+    role: Literal["USER", "PROFISSIONAL", "GESTOR", "ADMIN"]
+
+
+@auth_router.get("/admin/users", response_model=list[UserAdminOut])
+async def admin_list_users(
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user),
+):
+    resultado = await db.execute(select(Usuario).order_by(Usuario.id))
+    usuarios = resultado.scalars().all()
+    return [
+        UserAdminOut(
+            id=u.id,
+            nome=u.nome,
+            email=u.email,
+            role=u.role or "USER",
+            cargo=u.cargo,
+            ativo=u.ativo,
+        )
+        for u in usuarios
+    ]
+
+
+@auth_router.post("/admin/users/{user_id}/set-role", response_model=dict)
+async def admin_set_user_role(
+    user_id: int,
+    payload: SetRolePayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user),
+):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Não é possível alterar seu próprio role")
+
+    resultado = await db.execute(select(Usuario).where(Usuario.id == user_id))
+    usuario = resultado.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    usuario.role = payload.role
+    await db.commit()
+    return {"message": f"Role atualizado para {payload.role}", "user_id": user_id, "role": payload.role}
 
 
 # ─── CRUD de Cargos ──────────────────────────────────────────────────

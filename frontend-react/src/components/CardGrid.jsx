@@ -17,54 +17,60 @@ const CardGrid = () => {
   const role = (user?.role || 'USER').toUpperCase();
   const cargo = user?.cargo || null;
 
+  const isAdmin = role === 'ADMIN';
+
   const allCards = [
     {
       title: 'Relatórios Situacionais',
       to: '/relatorios-situacionais',
       icon: DocumentTextIcon,
       inDevelopment: false,
-      allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
+      allowed: ['USER', 'PROFISSIONAL', 'GESTOR', 'ADMIN']
     },
     {
       title: 'Marcação de Serviços',
       to: '/agendamento',
       icon: CalendarDaysIcon,
       inDevelopment: false,
-      allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
+      allowed: ['USER', 'PROFISSIONAL', 'GESTOR', 'ADMIN']
     },
     {
       title: 'Suporte e Feedback',
       to: '/suporte-feedback',
       icon: LifebuoyIcon,
       inDevelopment: false,
-      allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
+      allowed: ['USER', 'PROFISSIONAL', 'GESTOR', 'ADMIN']
+    },
+    {
+      title: 'Materiais Educativos',
+      to: '/materiais-educativos',
+      icon: BookOpenIcon,
+      inDevelopment: false,
+      allowed: ['USER', 'PROFISSIONAL', 'GESTOR', 'ADMIN']
+    },
+    {
+      title: 'Cronograma e Calendário',
+      to: '/cronograma',
+      icon: CalendarIcon,
+      inDevelopment: false,
+      allowed: ['PROFISSIONAL', 'GESTOR', 'ADMIN']
+    },
+    {
+      title: 'Painel Administrativo',
+      to: '/admin',
+      icon: ChartBarIcon,
+      inDevelopment: false,
+      allowed: ['ADMIN']
     },
   ];
 
-  if (['USER', 'PROFISSIONAL', 'GESTOR'].includes(role)) {
-    allCards.push(
-      {
-        title: 'Materiais Educativos',
-        to: '/materiais-educativos',
-        icon: BookOpenIcon,
-        inDevelopment: false,
-        allowed: ['USER', 'PROFISSIONAL', 'GESTOR']
-      },
-      {
-        title: 'Cronograma e Calendário',
-        to: '/cronograma',
-        icon: CalendarIcon,
-        inDevelopment: false,
-        allowed: ['PROFISSIONAL', 'GESTOR']
-      }
-    );
-  }
-
-  const filteredCards = allCards.filter(card => {
-    const roleOk = card.allowed.includes(role);
-    const cargoOk = card.allowedCargos && card.allowedCargos.includes(cargo);
-    return roleOk || cargoOk;
-  });
+  const filteredCards = isAdmin
+    ? allCards
+    : allCards.filter(card => {
+        const roleOk = card.allowed.includes(role);
+        const cargoOk = card.allowedCargos && card.allowedCargos.includes(cargo);
+        return roleOk || cargoOk;
+      });
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

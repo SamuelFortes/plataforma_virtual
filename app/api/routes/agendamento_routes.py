@@ -293,7 +293,7 @@ async def criar_bloqueio(
         prof = await db.get(ProfissionalUbs, target_prof_id)
         if not prof:
              raise HTTPException(status_code=404, detail="Profissional não encontrado.")
-        if current_user.role != "GESTOR":
+        if current_user.role not in ("GESTOR", "ADMIN"):
             query_prof = select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id)
             result = await db.execute(query_prof)
             me_profissional = result.scalars().first()

@@ -18,6 +18,7 @@ import RedefinirSenha from './pages/RedefinirSenha';
 import Configuracoes from './pages/Configuracoes';
 import GerenciarCargos from './pages/GerenciarCargos';
 import GerenciarUbs from './pages/GerenciarUbs';
+import AdminPanel from './pages/AdminPanel';
 import AuthCallback from './pages/AuthCallback';
 import NavBar from './components/NavBar';
 import { NotificationsProvider } from './components/ui/Notifications';
@@ -33,9 +34,10 @@ const ProtectedRoute = ({ children, allowedRoles, allowedCargos }) => {
   }
 
   if (allowedRoles || allowedCargos) {
+    const isAdmin = user.role === 'ADMIN';
     const roleOk = allowedRoles && allowedRoles.includes(user.role);
     const cargoOk = allowedCargos && allowedCargos.includes(user.cargo);
-    if (!roleOk && !cargoOk) {
+    if (!isAdmin && !roleOk && !cargoOk) {
       return <Navigate to="/dashboard" replace />;
     }
   }
@@ -47,9 +49,14 @@ const UbsGate = ({ children }) => {
   const [status, setStatus] = useState({ loading: true, hasUbs: true });
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
+  const isAdmin = user?.role === 'ADMIN';
   const isGestor = user?.role === 'GESTOR';
 
   useEffect(() => {
+    if (isAdmin) {
+      setStatus({ loading: false, hasUbs: true });
+      return;
+    }
     let active = true;
     const checkUbs = async () => {
       try {
@@ -62,7 +69,7 @@ const UbsGate = ({ children }) => {
 
     checkUbs();
     return () => { active = false; };
-  }, []);
+  }, [isAdmin]);
 
   if (status.loading) {
     return (
@@ -251,6 +258,12 @@ function App() {
               <Route path="/configuracoes" element={
                 <ProtectedRoute>
                   <Configuracoes />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <AdminPanel />
                 </ProtectedRoute>
               } />
             </Routes>

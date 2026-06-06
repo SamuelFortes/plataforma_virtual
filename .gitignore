@@ -78,3 +78,6 @@ frontend-react/package-lock.json
 *.pem
 *.key
 mkcert.exe
+
+# Documentação interna de desenvolvimento (não vai ao GitHub)
+DESENVOLVIMENTO.md

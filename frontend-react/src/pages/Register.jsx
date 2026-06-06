@@ -1,22 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { EyeIcon, EyeSlashIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '../components/ui/Notifications';
 import { isValidCpf, isValidEmail, validateName, validatePassword } from '../utils/validators';
-import { cargosService } from '../services/cargosService';
 
 const Register = ({ isDark, onToggleTheme }) => {
-  const [cargosDisponiveis, setCargosDisponiveis] = useState([]);
-
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
     cpf: '',
     password: '',
     confirmPassword: '',
-    role: 'USER',
-    cargo: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -24,12 +19,6 @@ const Register = ({ isDark, onToggleTheme }) => {
   const [loading, setLoading] = useState(false);
   const { notify } = useNotifications();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    cargosService.listar()
-      .then(data => setCargosDisponiveis(Array.isArray(data) ? data : []))
-      .catch(() => setCargosDisponiveis([]));
-  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -78,11 +67,7 @@ const Register = ({ isDark, onToggleTheme }) => {
         email: formData.email,
         senha: formData.password,
         cpf: formData.cpf,
-        role: formData.role,
-        cargo: formData.role === 'PROFISSIONAL' ? formData.cargo : null,
       });
-      // Redirect to login with success message implies we might want to show a toast or pass state
-      // For now, simple redirect
       notify({ type: 'success', message: 'Cadastro realizado com sucesso. Faça login.' });
       navigate('/login');
     } catch (err) {
@@ -90,15 +75,12 @@ const Register = ({ isDark, onToggleTheme }) => {
       if (err.response && err.response.data) {
         const detail = err.response.data.detail;
         if (Array.isArray(detail)) {
-          // Pydantic validation error (array of objects)
           const messages = detail.map(e => {
-            // e.loc is usually ['body', 'field_name']
             const field = e.loc[e.loc.length - 1];
             return `${field}: ${e.msg}`;
           }).join('. ');
           setError(messages);
         } else if (typeof detail === 'string') {
-          // Standard HTTPException error
           setError(detail);
         } else {
           setError('Erro desconhecido no servidor.');
@@ -203,55 +185,6 @@ const Register = ({ isDark, onToggleTheme }) => {
               />
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">CPF valido (somente numeros ou com pontuacao).</p>
             </div>
-
-            <div>
-              <label htmlFor="role" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Tipo de Perfil
-              </label>
-              <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={(e) => {
-                  const newRole = e.target.value;
-                  setFormData(prev => ({
-                    ...prev,
-                    role: newRole,
-                    cargo: newRole === 'PROFISSIONAL' ? prev.cargo : '',
-                  }));
-                }}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
-              >
-                <option value="USER">Usuário Comum</option>
-                <option value="PROFISSIONAL">Profissional de Saúde</option>
-                <option value="GESTOR">Gestor</option>
-              </select>
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                Selecione 'Gestor' apenas se tiver autorização administrativa.
-              </p>
-            </div>
-
-            {formData.role === 'PROFISSIONAL' && (
-              <div>
-                <label htmlFor="cargo" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Cargo na UBS
-                </label>
-                <select
-                  id="cargo"
-                  name="cargo"
-                  value={formData.cargo}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition"
-                >
-                  <option value="">Selecione o cargo</option>
-                  {cargosDisponiveis.map(c => (
-                    <option key={c.id} value={c.nome}>{c.nome}</option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Selecione seu cargo dentro da UBS.</p>
-              </div>
-            )}
 
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
