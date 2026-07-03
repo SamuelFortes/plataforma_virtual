@@ -60,6 +60,7 @@ export const NotificationsProvider = ({ children }) => {
         placeholder: options?.placeholder || '',
         value: options?.initialValue || '',
         tone: options?.tone || 'warning',
+        options: options?.options || null,
       });
     });
   }, []);
@@ -142,12 +143,31 @@ export const NotificationsProvider = ({ children }) => {
               )}
             </div>
             <div className="px-5 py-4">
-              <input
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
-                placeholder={promptState.placeholder}
-                value={promptState.value}
-                onChange={(event) => setPromptState((prev) => ({ ...prev, value: event.target.value }))}
-              />
+              {promptState.options ? (
+                <select
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  value={promptState.value}
+                  onChange={(event) => setPromptState((prev) => ({ ...prev, value: event.target.value }))}
+                >
+                  <option value="">Selecione...</option>
+                  {promptState.options.map((opt) => {
+                    const val = typeof opt === 'object' ? opt.value : opt;
+                    const lbl = typeof opt === 'object' ? opt.label : opt;
+                    return (
+                      <option key={val} value={val}>
+                        {lbl}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <input
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none"
+                  placeholder={promptState.placeholder}
+                  value={promptState.value}
+                  onChange={(event) => setPromptState((prev) => ({ ...prev, value: event.target.value }))}
+                />
+              )}
             </div>
             <div className="flex items-center justify-end gap-2 px-5 pb-5">
               <button

@@ -1,25 +1,24 @@
+import sys
+import asyncio
+
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
 from app.database import get_db, engine, Base
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 import logging
-import sys
 import os
-import asyncio
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse
-
-if sys.platform == 'win32':
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+from fastapi.responses import FileResponse, PlainTextResponse, JSONResponse
+from app.utils.limiter import limiter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-limiter = Limiter(key_func=get_remote_address)
 
 KEEP_ALIVE_INTERVAL = int(os.getenv("KEEP_ALIVE_INTERVAL", "840"))  # 14 min
 
@@ -68,6 +67,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan) #Inicializa a aplicação do FastAPI
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    logger.error("Unhandled exception: %s\n%s", exc, traceback.format_exc())
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno no servidor."},
+    )
+
 
 # Permite o front-end chamar a API do backend
 # IMPORTANTE: o CORS precisa ser configurado ANTES das rotas.
@@ -119,7 +128,7 @@ for module_path, router_names in _routers_to_load:
         raise
 
 # Monta o diretório de assets estáticos do frontend
-assets_path = "frontend-react/dist/assets"
+assets_path = "../frontend/dist/assets"
 if os.path.exists(assets_path) and os.path.isdir(assets_path):
     app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 else:
@@ -151,10 +160,10 @@ async def serve_react_app(catchall: str):
             detail=f"Rota de API não encontrada: /{catchall}",
         )
     # Serve arquivos estáticos da raiz do dist (ex: logo.jpeg, favicon.ico)
-    static_file = f"frontend-react/dist/{catchall}"
+    static_file = f"../frontend/dist/{catchall}"
     if os.path.exists(static_file) and os.path.isfile(static_file):
         return FileResponse(static_file)
-    index_path = "frontend-react/dist/index.html"
+    index_path = "../frontend/dist/index.html"
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {

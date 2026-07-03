@@ -3,7 +3,7 @@ console.log("[API] Inicializado com BASE_API:", BASE_API);
 
 // Utilidades de autenticação: token JWT e usuário atual
 function getToken() {
-  return localStorage.getItem("token"); // Changed to 'token' to match NavBar logic in frontend-react-3
+  return localStorage.getItem("token"); // Changed to 'token' to match NavBar logic in frontend-3
 }
 
 function setToken(token) {
@@ -16,7 +16,7 @@ function removeToken() {
 
 function setCurrentUser(user) {
   if (!user) {
-    localStorage.removeItem("user"); // Changed to 'user' to match frontend-react-3
+    localStorage.removeItem("user"); // Changed to 'user' to match frontend-3
     return;
   }
   localStorage.setItem("user", JSON.stringify(user));

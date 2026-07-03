@@ -20,12 +20,10 @@ from app.models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, Profe
 from app.utils.jwt_handler import create_access_token
 from app.utils.cpf_validator import validate_cpf
 from app.utils.deps import get_current_active_user, get_current_gestor_user, get_current_admin_user
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.utils.limiter import limiter
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 cargos_router = APIRouter(tags=["cargos"])
-limiter = Limiter(key_func=get_remote_address)
 
 # Usa pbkdf2_sha256 para evitar dependência direta do backend bcrypt
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -428,12 +426,12 @@ async def login_user(request: Request, payload: UsuarioLogin, db: AsyncSession =
     await reset_login_attempts(db, usuario)
     
     role = (usuario.role or "USER").upper()
-    if role not in ("USER", "PROFISSIONAL", "GESTOR"):
+    if role not in ("USER", "PROFISSIONAL", "GESTOR", "ADMIN"):
         role = "USER"
 
     resultado = await db.execute(select(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == usuario.id))
     tem_registro_prof = resultado.scalar_one_or_none() is not None
-    is_profissional = role in ("PROFISSIONAL", "GESTOR") or tem_registro_prof
+    is_profissional = role in ("PROFISSIONAL", "GESTOR", "ADMIN") or tem_registro_prof
 
     token_acesso = create_access_token(
         data={"sub": str(usuario.id), "email": usuario.email, "is_profissional": is_profissional, "role": role, "cargo": usuario.cargo}
@@ -475,15 +473,8 @@ async def create_professional_request(
     if existente is not None:
         if existente.status == "PENDING":
             raise HTTPException(status_code=400, detail="Você já possui uma solicitação pendente")
-        if existente.status == "APPROVED":
+        if existente.status == "APPROVED" and role in ("PROFISSIONAL", "GESTOR", "ADMIN"):
             raise HTTPException(status_code=400, detail="Sua solicitação já foi aprovada")
-
-    # Evita colisão com profissionais existentes
-    resultado = await db.execute(
-        select(ProfissionalUbs).where(ProfissionalUbs.registro_profissional == payload.registro_profissional)
-    )
-    if resultado.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=400, detail="Registro profissional já cadastrado")
 
     # Evita colisão com outra solicitação de outro usuário
     resultado = await db.execute(
@@ -501,11 +492,13 @@ async def create_professional_request(
             cargo=payload.cargo,
             registro_profissional=payload.registro_profissional,
             status="PENDING",
+            submitted_at=datetime.utcnow(),
         )
         db.add(solicitacao)
         await db.commit()
         await db.refresh(solicitacao)
         return solicitacao
+
 
     # Reenvio após rejeição
     existente.cargo = payload.cargo
@@ -612,7 +605,7 @@ async def approve_professional_request(
         profissional = ProfissionalUbs(
             usuario_id=usuario.id,
             cargo=solicitacao.cargo,
-            registro_profissional=solicitacao.registro_profissional,
+            registro_professional=solicitacao.registro_profissional,
         )
         db.add(profissional)
 
@@ -836,7 +829,7 @@ async def google_callback(
             ProfissionalUbs.ativo == True,
         )
     )
-    is_profissional = role in ("PROFISSIONAL", "GESTOR") or resultado_prof.scalar_one_or_none() is not None
+    is_profissional = role in ("PROFISSIONAL", "GESTOR", "ADMIN") or resultado_prof.scalar_one_or_none() is not None
 
     token = create_access_token(
         data={
@@ -877,6 +870,7 @@ class UserAdminOut(BaseModel):
 
 class SetRolePayload(BaseModel):
     role: Literal["USER", "PROFISSIONAL", "GESTOR", "ADMIN"]
+    cargo: str | None = None
 
 
 @auth_router.get("/admin/users", response_model=list[UserAdminOut])
@@ -914,9 +908,40 @@ async def admin_set_user_role(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
+    if payload.role != "PROFISSIONAL" and payload.cargo:
+        raise HTTPException(
+            status_code=400,
+            detail="Cargo só pode ser definido para usuários com o role PROFISSIONAL"
+        )
+
     usuario.role = payload.role
+
+    from sqlalchemy import delete
+    # Se o novo role for PROFISSIONAL, atualiza/define o cargo
+    if payload.role == "PROFISSIONAL":
+        if not payload.cargo or not payload.cargo.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="É obrigatório definir um cargo para usuários com o role PROFISSIONAL"
+            )
+        usuario.cargo = payload.cargo.strip()
+        # Também atualiza na tabela de profissionais, se houver registro lá
+        resultado_prof = await db.execute(select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == user_id))
+        profissional = resultado_prof.scalar_one_or_none()
+        if profissional:
+            profissional.cargo = payload.cargo.strip()
+    else:
+        # Se for qualquer outro role, remove o cargo do Usuário
+        usuario.cargo = None
+        # E remove da tabela de profissionais (já que não é mais profissional)
+        await db.execute(delete(ProfissionalUbs).where(ProfissionalUbs.usuario_id == user_id))
+        
+        # Se for setado para USER, limpa também a tabela de solicitações
+        if payload.role == "USER":
+            await db.execute(delete(ProfessionalRequest).where(ProfessionalRequest.user_id == user_id))
+
     await db.commit()
-    return {"message": f"Role atualizado para {payload.role}", "user_id": user_id, "role": payload.role}
+    return {"message": f"Role e cargo atualizados", "user_id": user_id, "role": payload.role, "cargo": usuario.cargo}
 
 
 # ─── CRUD de Cargos ──────────────────────────────────────────────────
