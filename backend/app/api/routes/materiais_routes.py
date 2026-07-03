@@ -21,8 +21,8 @@ from app.utils.jwt_handler import verify_token
 
 materiais_router = APIRouter(prefix="/materiais", tags=["materiais"])
 
-EDIT_ROLES = {"GESTOR", "PROFISSIONAL"}
-VIEW_ROLES = {"USER", "PROFISSIONAL", "GESTOR"}
+EDIT_ROLES = {"GESTOR", "PROFISSIONAL", "ADMIN"}
+VIEW_ROLES = {"USER", "PROFISSIONAL", "GESTOR", "ADMIN"}
 
 PUBLICO_ALVO_PROFISSIONAIS = "Profissionais"
 PUBLICO_ALVO_EQUIPE = "Equipe"
@@ -58,7 +58,7 @@ def _ensure_view_role(current_user: Usuario) -> None:
 
 def _build_material_view_filter(user_role: str):
     role = (user_role or "USER").upper()
-    if role == "GESTOR":
+    if role in ("GESTOR", "ADMIN"):
         return None
     if role == "PROFISSIONAL":
         return or_(
@@ -78,7 +78,7 @@ def _build_material_view_filter(user_role: str):
 
 def _can_view_material(material: EducationalMaterial, user_role: str) -> bool:
     role = (user_role or "USER").upper()
-    if role == "GESTOR":
+    if role in ("GESTOR", "ADMIN"):
         return True
 
     publico_alvo = (material.publico_alvo or "").strip()

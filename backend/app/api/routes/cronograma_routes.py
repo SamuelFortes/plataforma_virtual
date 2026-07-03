@@ -13,7 +13,7 @@ from app.utils.deps import get_current_active_user
 
 cronograma_router = APIRouter(prefix="/cronograma", tags=["cronograma"])
 
-EDIT_ROLES = {"GESTOR", "PROFISSIONAL"}
+EDIT_ROLES = {"GESTOR", "PROFISSIONAL", "ADMIN"}
 
 
 def _ensure_role(current_user: Usuario) -> None:
@@ -58,7 +58,6 @@ async def list_events(
     db: AsyncSession = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user),
 ):
-    _ensure_role(current_user)
     await _get_ubs_or_404(ubs_id, db)
 
     query = select(CronogramaEvent).where(CronogramaEvent.ubs_id == ubs_id)
