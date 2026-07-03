@@ -333,6 +333,17 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                       Configurações
                     </Link>
 
+                    {(isAdmin || role === 'GESTOR' || user?.cargo === 'Recepcionista') && (
+                      <Link
+                        to="/notificacoes"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <BellIcon className="w-4 h-4 mr-2" />
+                        Notificações
+                      </Link>
+                    )}
+
                     {role === 'USER' && (
                       <button
                         onClick={() => { setIsUserMenuOpen(false); setSolicitarModalOpen(true); }}
@@ -380,17 +391,6 @@ const NavBar = ({ isDark, onToggleTheme }) => {
                       >
                         <BuildingOffice2Icon className="w-4 h-4 mr-2" />
                         Gerenciar UBS
-                      </Link>
-                    )}
-
-                    {role === 'ADMIN' && (
-                      <Link
-                        to="/admin"
-                        className="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-semibold"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <ShieldCheckIcon className="w-4 h-4 mr-2" />
-                        Painel Admin
                       </Link>
                     )}
 
