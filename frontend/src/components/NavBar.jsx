@@ -306,7 +306,7 @@ const NavBar = ({ isDark, onToggleTheme }) => {
 
               <div className="hidden sm:flex flex-col items-end border-r border-gray-200 dark:border-slate-700 pr-6 mr-2">
                 <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Bem-vindo, {user.nome}!
+                  Bem-vindo(a)
                 </span>
                 <span className="text-xs text-gray-500 dark:text-slate-400 flex items-center capitalize">
                   <UserCircleIcon className="w-3 h-3 mr-1" />
