@@ -619,9 +619,11 @@ async def approve_professional_request(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    # Garante profissional
-    resultado = await db.execute(select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == usuario.id))
-    profissional = resultado.scalar_one_or_none()
+    # Garante profissional (usuario_id não é único em profissionais; pega o primeiro se houver)
+    resultado = await db.execute(
+        select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == usuario.id).limit(1)
+    )
+    profissional = resultado.scalars().first()
     if not profissional:
         profissional = ProfissionalUbs(
             usuario_id=usuario.id,
@@ -845,12 +847,12 @@ async def google_callback(
 
     role = (usuario.role or "USER").upper()
     resultado_prof = await db.execute(
-        select(ProfissionalUbs).where(
+        select(ProfissionalUbs.id).where(
             ProfissionalUbs.usuario_id == usuario.id,
             ProfissionalUbs.ativo == True,
-        )
+        ).limit(1)
     )
-    is_profissional = role in ("PROFISSIONAL", "GESTOR", "ADMIN") or resultado_prof.scalar_one_or_none() is not None
+    is_profissional = role in ("PROFISSIONAL", "GESTOR", "ADMIN") or resultado_prof.first() is not None
 
     token = create_access_token(
         data={
@@ -947,9 +949,9 @@ async def admin_set_user_role(
             )
         usuario.cargo = payload.cargo.strip()
         # Também atualiza na tabela de profissionais, se houver registro lá
+        # (usuario_id não é único; atualiza todas as linhas, coerente com o delete do else)
         resultado_prof = await db.execute(select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == user_id))
-        profissional = resultado_prof.scalar_one_or_none()
-        if profissional:
+        for profissional in resultado_prof.scalars().all():
             profissional.cargo = payload.cargo.strip()
     else:
         # Se for qualquer outro role, remove o cargo do Usuário
