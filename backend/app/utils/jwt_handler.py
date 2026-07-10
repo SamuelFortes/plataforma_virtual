@@ -26,3 +26,32 @@ def verify_token(token: str):
         return carga_util
     except JWTError:
         return None
+
+
+# ─── Token de recuperação de senha ───────────────────────────────────
+# Token dedicado (purpose="password_reset") para não ser aceito como token
+# de login. Expiração curta, configurável via env.
+PASSWORD_RESET_EXPIRE_MINUTES = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30"))
+
+
+def create_password_reset_token(user_id: int) -> str:
+    expiracao = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+    dados = {"sub": str(user_id), "purpose": "password_reset", "exp": expiracao}
+    return jwt.encode(dados, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_password_reset_token(token: str) -> Optional[int]:
+    """Valida o token de reset e retorna o user_id, ou None se inválido/expirado."""
+    try:
+        carga_util = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+    if carga_util.get("purpose") != "password_reset":
+        return None
+    sub = carga_util.get("sub")
+    if sub is None:
+        return None
+    try:
+        return int(sub)
+    except (TypeError, ValueError):
+        return None

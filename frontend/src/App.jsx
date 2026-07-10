@@ -15,6 +15,8 @@ import SuporteFeedback from './pages/SuporteFeedback';
 import GerenciarMensagens from './pages/GerenciarMensagens';
 import GestaoEquipesMicroareas from './pages/GestaoEquipesMicroareas';
 import RedefinirSenha from './pages/RedefinirSenha';
+import EsqueciSenha from './pages/EsqueciSenha';
+import NovaSenha from './pages/NovaSenha';
 import Configuracoes from './pages/Configuracoes';
 import GerenciarCargos from './pages/GerenciarCargos';
 import GerenciarUbs from './pages/GerenciarUbs';
@@ -99,7 +101,7 @@ const UbsGate = ({ children }) => {
   return children;
 };
 
-const HIDE_NAV_PATHS = ['/login', '/register', '/auth/callback'];
+const HIDE_NAV_PATHS = ['/login', '/register', '/auth/callback', '/esqueci-senha', '/nova-senha'];
 
 const ConditionalNavBar = (props) => {
   const { pathname } = useLocation();
@@ -139,6 +141,8 @@ function App() {
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<Login isDark={isDark} onToggleTheme={handleToggleTheme} />} />
               <Route path="/register" element={<Register isDark={isDark} onToggleTheme={handleToggleTheme} />} />
+              <Route path="/esqueci-senha" element={<EsqueciSenha isDark={isDark} onToggleTheme={handleToggleTheme} />} />
+              <Route path="/nova-senha" element={<NovaSenha isDark={isDark} onToggleTheme={handleToggleTheme} />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               
               <Route path="/dashboard" element={

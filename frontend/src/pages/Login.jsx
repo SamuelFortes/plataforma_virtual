@@ -17,6 +17,7 @@ const Login = ({ isDark, onToggleTheme }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -25,17 +26,31 @@ const Login = ({ isDark, onToggleTheme }) => {
     if (oauthError) {
       setError(OAUTH_ERRORS[oauthError] || 'Erro no login com Google.');
     }
+    if (searchParams.get('reset') === 'ok') {
+      setSuccess('Senha redefinida com sucesso. Entre com a nova senha.');
+    }
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
     try {
       const response = await axios.post('/api/auth/login', { email, senha: password });
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');
     } catch (err) {
-      setError('E-mail ou senha incorretos.');
+      const st = err.response?.status;
+      if (st === 401) {
+        setError('E-mail ou senha incorretos.');
+      } else if (st === 403) {
+        setError(err.response?.data?.detail || 'Acesso bloqueado. Tente novamente mais tarde.');
+      } else if (st === 429) {
+        setError('Muitas tentativas. Aguarde um instante e tente novamente.');
+      } else {
+        setError('Erro no servidor. Tente novamente em instantes.');
+      }
     }
   };
 
@@ -82,6 +97,12 @@ const Login = ({ isDark, onToggleTheme }) => {
             </div>
           )}
 
+          {success && (
+            <div className="mb-5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3">
+              <p className="text-sm text-green-700 dark:text-green-400">{success}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5" htmlFor="email">
@@ -119,6 +140,11 @@ const Login = ({ isDark, onToggleTheme }) => {
                 >
                   {showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                 </button>
+              </div>
+              <div className="mt-1.5 text-right">
+                <Link to="/esqueci-senha" className="text-xs font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-400">
+                  Esqueci minha senha
+                </Link>
               </div>
             </div>
 

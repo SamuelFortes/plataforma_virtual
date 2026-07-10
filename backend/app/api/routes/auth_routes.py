@@ -17,7 +17,12 @@ import httpx
 
 from app.database import get_db
 from app.models.auth_models import Usuario, ProfissionalUbs, LoginAttempt, ProfessionalRequest, Cargo
-from app.utils.jwt_handler import create_access_token
+from app.utils.jwt_handler import (
+    create_access_token,
+    create_password_reset_token,
+    verify_password_reset_token,
+)
+from app.utils.email_sender import send_password_reset_email
 from app.utils.cpf_validator import validate_cpf
 from app.utils.deps import get_current_active_user, get_current_gestor_user, get_current_admin_user
 from app.utils.limiter import limiter
@@ -403,6 +408,83 @@ async def reset_password_internal(
     await db.commit()
 
     return {"message": "Senha redefinida com sucesso."}
+
+
+# ─── Recuperação de senha (autoatendimento por e-mail) ───────────────
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordTokenRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    nova_senha: str = Field(..., min_length=8, max_length=100)
+    confirmar_nova_senha: str = Field(..., min_length=8, max_length=100)
+
+    @field_validator("nova_senha")
+    @classmethod
+    def validate_nova_senha(cls, v):
+        if len(v) < 8:
+            raise ValueError("Senha deve ter no mínimo 8 caracteres")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Senha deve conter pelo menos uma letra maiúscula")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Senha deve conter pelo menos uma letra minúscula")
+        if not re.search(r"\d", v):
+            raise ValueError("Senha deve conter pelo menos um número")
+        return v
+
+
+# Resposta genérica: nunca revela se o e-mail existe (evita enumeração de contas)
+_FORGOT_GENERIC_MSG = "Se o e-mail estiver cadastrado, enviamos as instruções de recuperação."
+
+
+@auth_router.post("/forgot-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
+async def forgot_password(
+    request: Request,
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    resultado = await db.execute(select(Usuario).filter(Usuario.email == payload.email))
+    usuario = resultado.scalar_one_or_none()
+
+    # Só dispara o e-mail se a conta existir e estiver ativa — mas a resposta é
+    # sempre a mesma, independente disso.
+    if usuario and usuario.ativo:
+        token = create_password_reset_token(usuario.id)
+        reset_link = f"{_FRONTEND_URL.rstrip('/')}/nova-senha?token={token}"
+        background_tasks.add_task(send_password_reset_email, usuario.email, reset_link)
+
+    return {"message": _FORGOT_GENERIC_MSG}
+
+
+@auth_router.post("/reset-password-token", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
+async def reset_password_with_token(
+    request: Request,
+    payload: ResetPasswordTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    if payload.nova_senha != payload.confirmar_nova_senha:
+        raise HTTPException(status_code=400, detail="As senhas não conferem.")
+
+    user_id = verify_password_reset_token(payload.token)
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Link inválido ou expirado. Solicite um novo.")
+
+    resultado = await db.execute(select(Usuario).filter(Usuario.id == user_id))
+    usuario = resultado.scalar_one_or_none()
+    if not usuario or not usuario.ativo:
+        raise HTTPException(status_code=400, detail="Link inválido ou expirado. Solicite um novo.")
+
+    usuario.senha = hash_password(payload.nova_senha)
+    usuario.tentativas_login = 0
+    usuario.bloqueado_ate = None
+    await db.commit()
+
+    return {"message": "Senha redefinida com sucesso. Você já pode entrar com a nova senha."}
 
 
 @auth_router.post("/login")
