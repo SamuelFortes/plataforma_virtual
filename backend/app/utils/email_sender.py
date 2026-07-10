@@ -159,25 +159,105 @@ async def _send_email(to: str, subject: str, html: str) -> bool:
 async def send_password_reset_email(to: str, reset_link: str) -> bool:
     """Envia o e-mail de recuperação de senha com o link de redefinição."""
     subject = "Recuperação de senha — MeuTerritório"
-    html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
-      <h2 style="color: #0e7490;">Recuperação de senha</h2>
-      <p>Recebemos um pedido para redefinir a senha da sua conta no <strong>MeuTerritório</strong>.</p>
-      <p>Clique no botão abaixo para criar uma nova senha. O link expira em 30 minutos.</p>
-      <p style="text-align: center; margin: 28px 0;">
-        <a href="{reset_link}"
-           style="background: #0891b2; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold;">
-          Redefinir minha senha
-        </a>
-      </p>
-      <p style="font-size: 13px; color: #6b7280;">
-        Se o botão não funcionar, copie e cole este endereço no navegador:<br>
-        <a href="{reset_link}">{reset_link}</a>
-      </p>
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
-      <p style="font-size: 12px; color: #9ca3af;">
-        Se você não solicitou a redefinição, ignore este e-mail — sua senha continua a mesma.
-      </p>
-    </div>
-    """
+    expira_min = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30"))
+    html = f"""\
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <title>Recuperação de senha</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f1f5f9;">
+  <!-- pré-cabeçalho oculto (texto de prévia na caixa de entrada) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+    Redefina a senha da sua conta no MeuTerritório. O link expira em {expira_min} minutos.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background-color:#f1f5f9; padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="max-width:520px; width:100%; background-color:#ffffff; border-radius:16px;
+                      overflow:hidden; box-shadow:0 4px 24px rgba(15,23,42,0.08);
+                      font-family:'Segoe UI', Roboto, Arial, sans-serif;">
+
+          <!-- Cabeçalho com faixa da marca -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0891b2 0%,#0e7490 100%);
+                       padding:32px 40px; text-align:center;">
+              <div style="color:#ffffff; font-size:22px; font-weight:700; letter-spacing:0.3px;">
+                MeuTerritório
+              </div>
+              <div style="color:#cffafe; font-size:13px; margin-top:4px;">
+                Recuperação de senha
+              </div>
+            </td>
+          </tr>
+
+          <!-- Corpo -->
+          <tr>
+            <td style="padding:40px 40px 24px 40px; color:#1f2937;">
+              <h1 style="margin:0 0 16px 0; font-size:20px; color:#0f172a;">Vamos redefinir sua senha</h1>
+              <p style="margin:0 0 14px 0; font-size:15px; line-height:1.6; color:#475569;">
+                Recebemos um pedido para redefinir a senha da sua conta no
+                <strong style="color:#0f172a;">MeuTerritório</strong>.
+              </p>
+              <p style="margin:0 0 28px 0; font-size:15px; line-height:1.6; color:#475569;">
+                Clique no botão abaixo para criar uma nova senha. Por segurança, este
+                link expira em <strong>{expira_min} minutos</strong>.
+              </p>
+
+              <!-- Botão à prova de clientes de e-mail -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px auto;">
+                <tr>
+                  <td align="center" bgcolor="#0891b2" style="border-radius:10px;">
+                    <a href="{reset_link}"
+                       style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:700;
+                              color:#ffffff; text-decoration:none; border-radius:10px;
+                              background:linear-gradient(135deg,#0891b2 0%,#0e7490 100%);">
+                      Redefinir minha senha
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px 0; font-size:13px; line-height:1.5; color:#94a3b8;">
+                Se o botão não funcionar, copie e cole este endereço no navegador:
+              </p>
+              <p style="margin:0; font-size:13px; line-height:1.5; word-break:break-all;">
+                <a href="{reset_link}" style="color:#0891b2; text-decoration:underline;">{reset_link}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Aviso de segurança -->
+          <tr>
+            <td style="padding:0 40px 32px 40px;">
+              <div style="border-top:1px solid #e2e8f0; padding-top:20px;">
+                <p style="margin:0; font-size:12px; line-height:1.6; color:#94a3b8;">
+                  Se você não solicitou esta redefinição, ignore este e-mail com segurança —
+                  sua senha continuará a mesma.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Rodapé -->
+          <tr>
+            <td style="background-color:#f8fafc; padding:20px 40px; text-align:center;">
+              <p style="margin:0; font-size:12px; color:#cbd5e1;">
+                © MeuTerritório · Este é um e-mail automático, não responda.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
     return await _send_email(to, subject, html)
