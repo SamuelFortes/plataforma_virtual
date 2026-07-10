@@ -25,7 +25,6 @@ import AuthCallback from './pages/AuthCallback';
 import NavBar from './components/NavBar';
 import { NotificationsProvider } from './components/ui/Notifications';
 import { api } from './services/api';
-import { MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 
 const ProtectedRoute = ({ children, allowedRoles, allowedCargos }) => {
   const userJson = localStorage.getItem('user');
@@ -109,20 +108,6 @@ const ConditionalNavBar = (props) => {
   return <NavBar {...props} />;
 };
 
-const ConditionalThemeButton = ({ isDark, onToggle }) => {
-  const { pathname } = useLocation();
-  if (!HIDE_NAV_PATHS.includes(pathname)) return null;
-  return (
-    <button
-      onClick={onToggle}
-      className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white dark:bg-slate-800 shadow-md text-gray-500 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-      aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
-    >
-      {isDark ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-    </button>
-  );
-};
-
 function App() {
   const [isDark, setIsDark] = useState(false);
 
@@ -135,7 +120,6 @@ function App() {
       <div className={isDark ? 'dark' : ''}>
         <Router>
           <ConditionalNavBar isDark={isDark} onToggleTheme={handleToggleTheme} />
-          <ConditionalThemeButton isDark={isDark} onToggle={handleToggleTheme} />
           <main className="bg-gray-50 dark:bg-slate-950 min-h-screen page-enter">
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
