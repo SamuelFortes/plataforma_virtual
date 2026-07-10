@@ -1,15 +1,31 @@
-"""Envio de e-mail transacional via API HTTP do Resend.
+"""Envio de e-mail transacional.
 
-Usa httpx (já é dependência do projeto), sem SDK extra. Se as credenciais não
-estiverem configuradas (ex.: ambiente de desenvolvimento), faz fallback: apenas
-registra o conteúdo no log em vez de enviar — assim o fluxo não quebra localmente.
+Suporta dois transportes, escolhidos automaticamente pelas variáveis de ambiente:
+
+1. SMTP (ex.: Gmail) — se SMTP_HOST/SMTP_USER/SMTP_PASSWORD estiverem definidos.
+   Usa smtplib da biblioteca padrão (sem dependência extra), rodando em thread
+   para não bloquear o event loop async.
+2. Resend (API HTTP) — se EMAIL_API_KEY estiver definido (e SMTP não).
+
+Se nenhum estiver configurado (ex.: dev), faz fallback: apenas registra o
+conteúdo no log em vez de enviar — assim o fluxo não quebra localmente.
 
 Variáveis de ambiente:
-  EMAIL_API_KEY  -> API key do Resend (obrigatória para envio real)
-  EMAIL_FROM     -> remetente verificado, ex.: "MeuTerritório <nao-responda@seudominio.com>"
+  # SMTP (Gmail: use uma "senha de app", exige verificação em 2 etapas na conta)
+  SMTP_HOST      -> ex.: smtp.gmail.com
+  SMTP_PORT      -> ex.: 587 (STARTTLS)
+  SMTP_USER      -> e-mail que autentica e envia, ex.: suaconta@gmail.com
+  SMTP_PASSWORD  -> senha de app (16 caracteres)
+  # Resend (alternativa)
+  EMAIL_API_KEY  -> API key do Resend
+  # Comum
+  EMAIL_FROM     -> remetente exibido; se ausente, usa SMTP_USER
 """
+import asyncio
 import logging
 import os
+import smtplib
+from email.message import EmailMessage
 
 import httpx
 
@@ -17,38 +33,70 @@ logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
 
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
+
 EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "").strip()
-EMAIL_FROM = os.getenv("EMAIL_FROM", "MeuTerritório <onboarding@resend.dev>").strip()
+EMAIL_FROM = os.getenv("EMAIL_FROM", "").strip() or SMTP_USER or "onboarding@resend.dev"
+
+
+def _send_via_smtp_sync(to: str, subject: str, html: str) -> None:
+    """Envio SMTP bloqueante — chamado dentro de asyncio.to_thread."""
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_FROM
+    msg["To"] = to
+    msg.set_content("Seu cliente de e-mail não suporta HTML. Abra em um navegador.")
+    msg.add_alternative(html, subtype="html")
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+        server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.send_message(msg)
 
 
 async def _send_email(to: str, subject: str, html: str) -> bool:
-    """Envia um e-mail. Retorna True se enviado, False se caiu no fallback/erro."""
-    if not EMAIL_API_KEY:
-        logger.warning(
-            "EMAIL_API_KEY não configurada — e-mail NÃO enviado. "
-            "Destinatário: %s | Assunto: %s\nConteúdo:\n%s",
-            to, subject, html,
-        )
-        return False
-
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                RESEND_API_URL,
-                headers={
-                    "Authorization": f"Bearer {EMAIL_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={"from": EMAIL_FROM, "to": [to], "subject": subject, "html": html},
-            )
-        if resp.status_code >= 400:
-            logger.error("Falha ao enviar e-mail (%s): %s", resp.status_code, resp.text)
+    """Envia um e-mail pelo transporte configurado. True se enviado, False caso contrário."""
+    # 1. SMTP (Gmail e afins)
+    if SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
+        try:
+            await asyncio.to_thread(_send_via_smtp_sync, to, subject, html)
+            logger.info("E-mail (SMTP) enviado para %s (assunto: %s)", to, subject)
+            return True
+        except Exception as exc:
+            logger.error("Erro ao enviar e-mail via SMTP para %s: %s", to, exc)
             return False
-        logger.info("E-mail enviado para %s (assunto: %s)", to, subject)
-        return True
-    except Exception as exc:  # rede/timeout — não deve derrubar a requisição
-        logger.error("Erro ao enviar e-mail para %s: %s", to, exc)
-        return False
+
+    # 2. Resend (API HTTP)
+    if EMAIL_API_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    RESEND_API_URL,
+                    headers={
+                        "Authorization": f"Bearer {EMAIL_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"from": EMAIL_FROM, "to": [to], "subject": subject, "html": html},
+                )
+            if resp.status_code >= 400:
+                logger.error("Falha ao enviar e-mail via Resend (%s): %s", resp.status_code, resp.text)
+                return False
+            logger.info("E-mail (Resend) enviado para %s (assunto: %s)", to, subject)
+            return True
+        except Exception as exc:
+            logger.error("Erro ao enviar e-mail via Resend para %s: %s", to, exc)
+            return False
+
+    # 3. Fallback: sem transporte configurado — apenas loga
+    logger.warning(
+        "Nenhum transporte de e-mail configurado (SMTP_* ou EMAIL_API_KEY) — "
+        "e-mail NÃO enviado. Destinatário: %s | Assunto: %s\nConteúdo:\n%s",
+        to, subject, html,
+    )
+    return False
 
 
 async def send_password_reset_email(to: str, reset_link: str) -> bool:
