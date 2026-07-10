@@ -25,6 +25,7 @@ import asyncio
 import logging
 import os
 import smtplib
+import socket
 from email.message import EmailMessage
 
 import httpx
@@ -51,7 +52,14 @@ def _send_via_smtp_sync(to: str, subject: str, html: str) -> None:
     msg.set_content("Seu cliente de e-mail não suporta HTML. Abra em um navegador.")
     msg.add_alternative(html, subtype="html")
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+    # Containers do Render (e afins) costumam NÃO ter rota IPv6 de saída. Como o
+    # smtp.gmail.com resolve para IPv6 por padrão, o smtplib tenta o endereço IPv6
+    # e falha com "[Errno 101] Network is unreachable". Resolvemos manualmente o
+    # endereço IPv4 (registro A) e conectamos por ele, mantendo o hostname original
+    # para que a validação do certificado TLS no STARTTLS continue funcionando.
+    ipv4 = socket.getaddrinfo(SMTP_HOST, SMTP_PORT, socket.AF_INET, socket.SOCK_STREAM)[0][4][0]
+    with smtplib.SMTP(ipv4, SMTP_PORT, timeout=20) as server:
+        server._host = SMTP_HOST  # server_hostname usado pelo STARTTLS (certificado)
         server.starttls()
         server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
