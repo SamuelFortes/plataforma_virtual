@@ -5,7 +5,7 @@ from typing import Literal, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 import os
 import secrets
@@ -21,6 +21,7 @@ from app.utils.jwt_handler import create_access_token
 from app.utils.cpf_validator import validate_cpf
 from app.utils.deps import get_current_active_user, get_current_gestor_user, get_current_admin_user
 from app.utils.limiter import limiter
+from slowapi.util import get_remote_address
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 cargos_router = APIRouter(tags=["cargos"])
@@ -171,9 +172,11 @@ async def get_me(
     is_prof = role in ("PROFISSIONAL", "GESTOR")
     if not is_prof:
         resultado = await db.execute(
-            select(ProfissionalUbs).where(ProfissionalUbs.usuario_id == current_user.id, ProfissionalUbs.ativo == True)
+            select(ProfissionalUbs.id)
+            .where(ProfissionalUbs.usuario_id == current_user.id, ProfissionalUbs.ativo == True)
+            .limit(1)
         )
-        is_prof = resultado.scalar_one_or_none() is not None
+        is_prof = resultado.first() is not None
 
     return {
         "id": current_user.id,
@@ -256,15 +259,31 @@ async def log_login_attempt(db: AsyncSession, email: str, ip_address: str, suces
     await db.commit()
 
 
+def _as_aware_utc(dt: datetime | None) -> datetime | None:
+    """Normaliza datetimes lidos do banco para UTC aware.
+
+    Postgres (timestamptz) retorna datetime aware; SQLite retorna naive.
+    Sem isso, comparar com datetime.now(timezone.utc) lançaria TypeError.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 async def check_account_lockout(db: AsyncSession, user: Usuario) -> bool:
-    if user.bloqueado_ate and user.bloqueado_ate > datetime.utcnow():
+    bloqueado_ate = _as_aware_utc(user.bloqueado_ate)
+    agora = datetime.now(timezone.utc)
+
+    if bloqueado_ate and bloqueado_ate > agora:
         return True
-    
-    if user.bloqueado_ate and user.bloqueado_ate <= datetime.utcnow():
+
+    if bloqueado_ate and bloqueado_ate <= agora:
         user.tentativas_login = 0
         user.bloqueado_ate = None
         await db.commit()
-    
+
     return False
 
 
@@ -272,7 +291,7 @@ async def handle_failed_login(db: AsyncSession, user: Usuario):
     user.tentativas_login += 1
     
     if user.tentativas_login >= MAX_LOGIN_ATTEMPTS:
-        user.bloqueado_ate = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+        user.bloqueado_ate = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
         user.tentativas_login = 0
     
     await db.commit()
@@ -399,7 +418,7 @@ async def login_user(request: Request, payload: UsuarioLogin, db: AsyncSession =
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
     
     if await check_account_lockout(db, usuario):
-        tempo_restante = int((usuario.bloqueado_ate - datetime.utcnow()).total_seconds() / 60)
+        tempo_restante = int((_as_aware_utc(usuario.bloqueado_ate) - datetime.now(timezone.utc)).total_seconds() / 60)
         await log_login_attempt(db, payload.email, ip_cliente, False, f"Conta bloqueada ({tempo_restante} min restantes)")
         raise HTTPException(
             status_code=403, 
@@ -429,8 +448,10 @@ async def login_user(request: Request, payload: UsuarioLogin, db: AsyncSession =
     if role not in ("USER", "PROFISSIONAL", "GESTOR", "ADMIN"):
         role = "USER"
 
-    resultado = await db.execute(select(ProfissionalUbs).filter(ProfissionalUbs.usuario_id == usuario.id))
-    tem_registro_prof = resultado.scalar_one_or_none() is not None
+    resultado = await db.execute(
+        select(ProfissionalUbs.id).filter(ProfissionalUbs.usuario_id == usuario.id).limit(1)
+    )
+    tem_registro_prof = resultado.first() is not None
     is_profissional = role in ("PROFISSIONAL", "GESTOR", "ADMIN") or tem_registro_prof
 
     token_acesso = create_access_token(
@@ -492,7 +513,7 @@ async def create_professional_request(
             cargo=payload.cargo,
             registro_profissional=payload.registro_profissional,
             status="PENDING",
-            submitted_at=datetime.utcnow(),
+            submitted_at=datetime.now(timezone.utc),
         )
         db.add(solicitacao)
         await db.commit()
@@ -507,7 +528,7 @@ async def create_professional_request(
     existente.rejection_reason = None
     existente.reviewed_at = None
     existente.reviewed_by_user_id = None
-    existente.submitted_at = datetime.utcnow()
+    existente.submitted_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(existente)
     return existente
@@ -612,7 +633,7 @@ async def approve_professional_request(
     usuario.role = payload.role
     usuario.cargo = solicitacao.cargo
     solicitacao.status = "APPROVED"
-    solicitacao.reviewed_at = datetime.utcnow()
+    solicitacao.reviewed_at = datetime.now(timezone.utc)
     solicitacao.reviewed_by_user_id = current_user.id
     solicitacao.rejection_reason = None
 
@@ -635,7 +656,7 @@ async def reject_professional_request(
         raise HTTPException(status_code=400, detail="Solicitação não está pendente")
 
     solicitacao.status = "REJECTED"
-    solicitacao.reviewed_at = datetime.utcnow()
+    solicitacao.reviewed_at = datetime.now(timezone.utc)
     solicitacao.reviewed_by_user_id = current_user.id
     solicitacao.rejection_reason = payload.rejection_reason
 
