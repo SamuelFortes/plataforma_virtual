@@ -1,16 +1,22 @@
 """Envio de e-mail transacional.
 
-Suporta dois transportes, escolhidos automaticamente pelas variáveis de ambiente:
+Suporta três transportes, escolhidos automaticamente pelas variáveis de ambiente
+(nesta ordem de prioridade):
 
-1. SMTP (ex.: Gmail) — se SMTP_HOST/SMTP_USER/SMTP_PASSWORD estiverem definidos.
+1. Brevo (API HTTP) — se BREVO_API_KEY estiver definido. Recomendado em produção
+   no Render: usa HTTPS (porta 443), que não é bloqueado como as portas de SMTP.
+2. SMTP (ex.: Gmail) — se SMTP_HOST/SMTP_USER/SMTP_PASSWORD estiverem definidos.
    Usa smtplib da biblioteca padrão (sem dependência extra), rodando em thread
-   para não bloquear o event loop async.
-2. Resend (API HTTP) — se EMAIL_API_KEY estiver definido (e SMTP não).
+   para não bloquear o event loop async. OBS.: o plano free do Render bloqueia
+   as portas de SMTP (25/465/587), então SMTP só funciona em plano pago.
+3. Resend (API HTTP) — se EMAIL_API_KEY estiver definido.
 
 Se nenhum estiver configurado (ex.: dev), faz fallback: apenas registra o
 conteúdo no log em vez de enviar — assim o fluxo não quebra localmente.
 
 Variáveis de ambiente:
+  # Brevo (verifique o e-mail remetente no painel; não exige domínio próprio)
+  BREVO_API_KEY  -> API key (v3) do Brevo
   # SMTP (Gmail: use uma "senha de app", exige verificação em 2 etapas na conta)
   SMTP_HOST      -> ex.: smtp.gmail.com
   SMTP_PORT      -> ex.: 587 (STARTTLS)
@@ -20,6 +26,7 @@ Variáveis de ambiente:
   EMAIL_API_KEY  -> API key do Resend
   # Comum
   EMAIL_FROM     -> remetente exibido; se ausente, usa SMTP_USER
+                    aceita "Nome <email@dominio>" ou só "email@dominio"
 """
 import asyncio
 import logging
@@ -27,12 +34,14 @@ import os
 import smtplib
 import socket
 from email.message import EmailMessage
+from email.utils import parseaddr
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -40,7 +49,12 @@ SMTP_USER = os.getenv("SMTP_USER", "").strip()
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
 
 EMAIL_API_KEY = os.getenv("EMAIL_API_KEY", "").strip()
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "").strip()
 EMAIL_FROM = os.getenv("EMAIL_FROM", "").strip() or SMTP_USER or "onboarding@resend.dev"
+
+# "MeuTerritório <email@dominio>" -> ("MeuTerritório", "email@dominio")
+_FROM_NAME, _FROM_EMAIL = parseaddr(EMAIL_FROM)
+_FROM_EMAIL = _FROM_EMAIL or SMTP_USER
 
 
 def _send_via_smtp_sync(to: str, subject: str, html: str) -> None:
@@ -65,9 +79,44 @@ def _send_via_smtp_sync(to: str, subject: str, html: str) -> None:
         server.send_message(msg)
 
 
+async def _send_via_brevo(to: str, subject: str, html: str) -> bool:
+    """Envio pela API HTTP do Brevo (porta 443 — funciona no Render free)."""
+    sender = {"email": _FROM_EMAIL}
+    if _FROM_NAME:
+        sender["name"] = _FROM_NAME
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                BREVO_API_URL,
+                headers={
+                    "api-key": BREVO_API_KEY,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                json={
+                    "sender": sender,
+                    "to": [{"email": to}],
+                    "subject": subject,
+                    "htmlContent": html,
+                },
+            )
+        if resp.status_code >= 400:
+            logger.error("Falha ao enviar e-mail via Brevo (%s): %s", resp.status_code, resp.text)
+            return False
+        logger.info("E-mail (Brevo) enviado para %s (assunto: %s)", to, subject)
+        return True
+    except Exception as exc:
+        logger.error("Erro ao enviar e-mail via Brevo para %s: %s", to, exc)
+        return False
+
+
 async def _send_email(to: str, subject: str, html: str) -> bool:
     """Envia um e-mail pelo transporte configurado. True se enviado, False caso contrário."""
-    # 1. SMTP (Gmail e afins)
+    # 1. Brevo (API HTTP) — preferido em produção (não usa portas SMTP)
+    if BREVO_API_KEY:
+        return await _send_via_brevo(to, subject, html)
+
+    # 2. SMTP (Gmail e afins)
     if SMTP_HOST and SMTP_USER and SMTP_PASSWORD:
         try:
             await asyncio.to_thread(_send_via_smtp_sync, to, subject, html)
@@ -77,7 +126,7 @@ async def _send_email(to: str, subject: str, html: str) -> bool:
             logger.error("Erro ao enviar e-mail via SMTP para %s: %s", to, exc)
             return False
 
-    # 2. Resend (API HTTP)
+    # 3. Resend (API HTTP)
     if EMAIL_API_KEY:
         try:
             async with httpx.AsyncClient(timeout=15) as client:
@@ -98,7 +147,7 @@ async def _send_email(to: str, subject: str, html: str) -> bool:
             logger.error("Erro ao enviar e-mail via Resend para %s: %s", to, exc)
             return False
 
-    # 3. Fallback: sem transporte configurado — apenas loga
+    # 4. Fallback: sem transporte configurado — apenas loga
     logger.warning(
         "Nenhum transporte de e-mail configurado (SMTP_* ou EMAIL_API_KEY) — "
         "e-mail NÃO enviado. Destinatário: %s | Assunto: %s\nConteúdo:\n%s",
