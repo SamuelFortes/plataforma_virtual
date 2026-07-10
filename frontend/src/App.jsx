@@ -216,7 +216,7 @@ function App() {
               } />
 
               <Route path="/cronograma" element={
-                <ProtectedRoute allowedRoles={['PROFISSIONAL', 'GESTOR']}>
+                <ProtectedRoute allowedRoles={['USER', 'PROFISSIONAL', 'GESTOR']}>
                   <UbsGate>
                     <Cronograma />
                   </UbsGate>

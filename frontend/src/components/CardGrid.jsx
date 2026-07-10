@@ -53,7 +53,7 @@ const CardGrid = () => {
       to: '/cronograma',
       icon: CalendarIcon,
       inDevelopment: false,
-      allowed: ['PROFISSIONAL', 'GESTOR', 'ADMIN']
+      allowed: ['USER', 'PROFISSIONAL', 'GESTOR', 'ADMIN']
     },
     {
       title: 'Painel Administrativo',

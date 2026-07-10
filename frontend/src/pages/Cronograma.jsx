@@ -170,6 +170,12 @@ const MiniCalendar = ({ events }) => {
 
 const Cronograma = () => {
   const { notify, confirm } = useNotifications();
+
+  const userJson = localStorage.getItem('user');
+  const currentUser = userJson ? JSON.parse(userJson) : null;
+  const role = (currentUser?.role || 'USER').toUpperCase();
+  const canEdit = ['PROFISSIONAL', 'GESTOR', 'ADMIN'].includes(role);
+
   const [ubsOptions, setUbsOptions] = useState([]);
   const [selectedUbs, setSelectedUbs] = useState('');
   const [events, setEvents] = useState([]);
@@ -349,7 +355,9 @@ const Cronograma = () => {
                 Cronograma e Calendário
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                Organize sala de vacina, farmácia básica, reuniões da equipe e outros eventos da unidade.
+                {canEdit
+                  ? 'Organize sala de vacina, farmácia básica, reuniões da equipe e outros eventos da unidade.'
+                  : 'Acompanhe a agenda de vacinação, farmácia básica, reuniões e demais eventos da unidade.'}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -469,23 +477,25 @@ const Cronograma = () => {
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  if (showForm && !editingId) { setShowForm(false); }
-                  else { resetForm(); setShowForm(true); }
-                }}
-                className={`${showForm && !editingId ? btnSecondary : btnPrimary} !w-auto`}
-              >
-                {showForm && !editingId ? (
-                  <><XMarkIcon className="h-5 w-5" /> Cancelar</>
-                ) : (
-                  <><PlusIcon className="h-5 w-5" /> Novo evento</>
-                )}
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    if (showForm && !editingId) { setShowForm(false); }
+                    else { resetForm(); setShowForm(true); }
+                  }}
+                  className={`${showForm && !editingId ? btnSecondary : btnPrimary} !w-auto`}
+                >
+                  {showForm && !editingId ? (
+                    <><XMarkIcon className="h-5 w-5" /> Cancelar</>
+                  ) : (
+                    <><PlusIcon className="h-5 w-5" /> Novo evento</>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* ── Event form ── */}
-            {showForm && (
+            {showForm && canEdit && (
               <div className={`${cardClass} p-6 rise-fade`}>
                 <div className="flex items-center gap-3 mb-5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
@@ -642,7 +652,9 @@ const Cronograma = () => {
                   <CalendarDaysIcon className="h-7 w-7 text-slate-400 dark:text-slate-500" />
                 </div>
                 <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
-                  Nenhum evento encontrado. Crie seu primeiro evento para organizar o cronograma da unidade.
+                  {canEdit
+                    ? 'Nenhum evento encontrado. Crie seu primeiro evento para organizar o cronograma da unidade.'
+                    : 'Nenhum evento cadastrado no cronograma desta unidade.'}
                 </p>
               </div>
             ) : (
@@ -710,16 +722,18 @@ const Cronograma = () => {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex sm:flex-col gap-2 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEdit(evento)} className={`${btnSecondary} !py-2 !px-3 !text-xs`}>
-                          <PencilSquareIcon className="h-4 w-4" />
-                          <span className="sm:hidden">Editar</span>
-                        </button>
-                        <button onClick={() => handleDelete(evento.id)} className={`${btnDanger} !py-2 !px-3 !text-xs`}>
-                          <TrashIcon className="h-4 w-4" />
-                          <span className="sm:hidden">Remover</span>
-                        </button>
-                      </div>
+                      {canEdit && (
+                        <div className="flex sm:flex-col gap-2 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEdit(evento)} className={`${btnSecondary} !py-2 !px-3 !text-xs`}>
+                            <PencilSquareIcon className="h-4 w-4" />
+                            <span className="sm:hidden">Editar</span>
+                          </button>
+                          <button onClick={() => handleDelete(evento.id)} className={`${btnDanger} !py-2 !px-3 !text-xs`}>
+                            <TrashIcon className="h-4 w-4" />
+                            <span className="sm:hidden">Remover</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
