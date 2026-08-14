@@ -26,6 +26,7 @@ import { StarIcon } from '@heroicons/react/24/solid';
 import { api } from '../services/api';
 import { ubsService } from '../services/ubsService';
 import { useNotifications } from '../components/ui/Notifications';
+import HistoricoProblemas from '../components/problemas/HistoricoProblemas';
 
 /* ─── constantes ─── */
 const GUT_OPTIONS = [1, 2, 3, 4, 5];
@@ -232,8 +233,14 @@ const CACHE = {
 
 /* ─── componente principal ─── */
 
+const ABAS = [
+  { value: 'mapa', label: 'Mapa' },
+  { value: 'historico', label: 'Histórico' },
+];
+
 const MapaProblemasIntervencoes = () => {
   const { notify, confirm } = useNotifications();
+  const [aba, setAba] = useState('mapa');
   const userRole = (JSON.parse(localStorage.getItem('user') || '{}')?.role || 'USER').toUpperCase();
   const canManage = ['PROFISSIONAL', 'GESTOR'].includes(userRole);
   const [ubsInfo, setUbsInfo] = useState(null);
@@ -320,6 +327,23 @@ const MapaProblemasIntervencoes = () => {
       setSelectedProblemId(null);
       notify({ type: 'error', message: 'Erro ao carregar problemas.' });
     }
+  };
+
+  /**
+   * Busca as intervenções de um problema sem tocar no estado do fluxo principal.
+   * A aba de histórico expande vários problemas de forma independente, então não
+   * pode reaproveitar loadInterventions, que sobrescreve a seleção atual.
+   */
+  const fetchInterventionsFor = async (problemId) => {
+    const cacheKey = `pi_interventions_${problemId}`;
+    const cached = CACHE.get(cacheKey);
+    if (cached) return cached;
+    const data = await api.request(`/ubs/problems/${problemId}/interventions`, {
+      requiresAuth: true,
+    });
+    const items = Array.isArray(data) ? data : [];
+    CACHE.set(cacheKey, items);
+    return items;
   };
 
   const loadInterventions = async (problemId) => {
@@ -701,6 +725,40 @@ const MapaProblemasIntervencoes = () => {
           </div>
         </section>
 
+        {/* ═══ ABAS ═══ */}
+        <div
+          role="tablist"
+          aria-label="Seções do módulo"
+          className="mt-8 inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900"
+        >
+          {ABAS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="tab"
+              aria-selected={aba === item.value}
+              onClick={() => setAba(item.value)}
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                aba === item.value
+                  ? 'bg-blue-600 text-white dark:bg-blue-500'
+                  : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {aba === 'historico' && (
+          <HistoricoProblemas
+            problems={problems}
+            loading={loadingProblems}
+            onLoadInterventions={fetchInterventionsFor}
+          />
+        )}
+
+        {aba === 'mapa' && (
+        <>
         {/* ═══ STEP 1: PROBLEMAS ═══ */}
         <section className="mt-8 rise-fade stagger-1">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
@@ -1238,6 +1296,8 @@ const MapaProblemasIntervencoes = () => {
           <div className="mt-8 rise-fade">
             <EmptyState icon={ChevronRightIcon} message="Selecione um problema acima para visualizar e gerenciar suas intervenções e ações." />
           </div>
+        )}
+        </>
         )}
 
       </div>
