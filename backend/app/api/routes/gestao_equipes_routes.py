@@ -51,9 +51,21 @@ def _normalize_localidades(localidades):
     return normalized
 
 
-def _ensure_allowed(current_user: Usuario):
+VIEW_ROLES = ("GESTOR", "ADMIN", "PROFISSIONAL")
+EDIT_ROLES = ("GESTOR", "ADMIN")
+
+
+def _ensure_can_view(current_user: Usuario):
+    """Consulta de KPIs, microáreas, agentes e exportação em PDF."""
     role = (current_user.role or "USER").upper()
-    if role not in ("GESTOR", "ADMIN"):
+    if role not in VIEW_ROLES:
+        raise HTTPException(status_code=403, detail="Acesso restrito a profissionais e gestores.")
+
+
+def _ensure_allowed(current_user: Usuario):
+    """Criação, edição, exclusão e vínculo de agentes — restrito a gestores."""
+    role = (current_user.role or "USER").upper()
+    if role not in EDIT_ROLES:
         raise HTTPException(status_code=403, detail="Acesso restrito a gestores.")
 
 
@@ -69,7 +81,7 @@ async def get_kpis(
     ubs_id: Optional[int] = Query(None, ge=1),
 ):
     """Retorna KPIs calculados dinamicamente a partir das microáreas."""
-    _ensure_allowed(current_user)
+    _ensure_can_view(current_user)
 
     stmt = select(
         sqlfunc.coalesce(sqlfunc.sum(Microarea.populacao), 0).label("populacao"),
@@ -109,7 +121,7 @@ async def listar_agentes(
     ubs_id: Optional[int] = Query(None, ge=1),
 ):
     """Lista todos os agentes de saúde com dados da microárea."""
-    _ensure_allowed(current_user)
+    _ensure_can_view(current_user)
 
     stmt = (
         select(AgenteSaude)
@@ -155,7 +167,7 @@ async def listar_microareas(
     ubs_id: Optional[int] = Query(None, ge=1),
 ):
     """Lista todas as microáreas."""
-    _ensure_allowed(current_user)
+    _ensure_can_view(current_user)
 
     stmt = select(Microarea)
     if ubs_id:
@@ -174,7 +186,7 @@ async def export_microareas_pdf(
     ubs_id: Optional[int] = Query(None, ge=1),
 ):
     """Exporta um PDF com a situacao atual das microareas."""
-    _ensure_allowed(current_user)
+    _ensure_can_view(current_user)
 
     if not ubs_id:
         raise HTTPException(status_code=400, detail="Informe o ubs_id.")

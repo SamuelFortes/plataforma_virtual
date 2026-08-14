@@ -1227,7 +1227,7 @@ const RelatoriosSituacionais = () => {
                         </div>
                     </Link>
 
-                    {['GESTOR'].includes(user?.role) || user?.cargo === 'Recepcionista' ? (
+                    {['GESTOR', 'ADMIN', 'PROFISSIONAL'].includes(user?.role) || user?.cargo === 'Recepcionista' ? (
                         <Link
                             to="/gestao-equipes"
                             className="flex items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 shadow-sm hover:shadow-md hover:border-cyan-400 dark:hover:border-cyan-500 transition-all group"

@@ -105,7 +105,8 @@ const GestaoEquipesMicroareas = () => {
   const currentUser = api.getCurrentUser();
   const canEdit = useMemo(() => {
     const role = (currentUser?.role || 'USER').toUpperCase();
-    return role === 'GESTOR' || currentUser?.cargo === 'Recepcionista';
+    // Deve espelhar _ensure_allowed em backend/app/api/routes/gestao_equipes_routes.py
+    return role === 'GESTOR' || role === 'ADMIN' || currentUser?.cargo === 'Recepcionista';
   }, [currentUser]);
 
   const [kpis, setKpis] = useState(MOCK_KPIS);
@@ -142,9 +143,12 @@ const GestaoEquipesMicroareas = () => {
     setLoading(true);
     setUsingMockData(false);
     try {
+      // A lista de ACS só serve ao formulário de vínculo, e o endpoint é restrito
+      // a gestor/admin. Quem está em modo leitura não a busca, senão o 403 cairia
+      // no catch abaixo e a tela exibiria dados de demonstração.
       const [ubsData, acsData] = await Promise.all([
         ubsService.getSingleUbs(),
-        gestaoEquipesService.getAcsUsers(),
+        canEdit ? gestaoEquipesService.getAcsUsers() : Promise.resolve([]),
       ]);
       setAcsUsers(Array.isArray(acsData) ? acsData : []);
       setUbsInfo(ubsData);
@@ -181,7 +185,7 @@ const GestaoEquipesMicroareas = () => {
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, [notify, canEdit]);
 
   const loadData = useCallback(async () => {
     if (!selectedUbsId) return;

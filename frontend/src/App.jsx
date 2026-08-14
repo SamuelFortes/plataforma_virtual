@@ -228,7 +228,7 @@ function App() {
               } />
 
               <Route path="/gestao-equipes" element={
-                <ProtectedRoute allowedRoles={['GESTOR']} allowedCargos={['Recepcionista']}>
+                <ProtectedRoute allowedRoles={['GESTOR', 'PROFISSIONAL']} allowedCargos={['Recepcionista']}>
                   <UbsGate>
                     <GestaoEquipesMicroareas />
                   </UbsGate>
