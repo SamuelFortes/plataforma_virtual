@@ -32,11 +32,20 @@ def _validate_enum_value(value: str, allowed: set[str], label: str) -> str:
 
 
 def _normalize_all_day(inicio: datetime, fim: datetime | None) -> tuple[datetime, datetime | None]:
+    """Ancora um evento de dia inteiro nos limites do dia **no fuso enviado**.
+
+    O cliente envia a data com o offset local (ex.: 2026-08-14T00:00:00-03:00).
+    Zerar a hora sem considerar esse offset jogaria o evento para o dia anterior:
+    2026-08-14T03:00:00Z com hour=0 vira 2026-08-14T00:00:00Z, que em UTC-3 é
+    13/08 às 21h — a data errada que aparecia na listagem.
+    """
     start = inicio.replace(hour=0, minute=0, second=0, microsecond=0)
-    if fim is None:
-        end = start.replace(hour=23, minute=59, second=59, microsecond=0)
-    else:
-        end = fim.replace(hour=23, minute=59, second=59, microsecond=0)
+    base_fim = fim if fim is not None else start
+    # Alinha o fim ao fuso do início ANTES de truncar, senão um fim enviado em
+    # UTC viraria 23:59 UTC (20:59 local) e encurtaria o último dia.
+    if start.tzinfo is not None and base_fim.tzinfo is not None:
+        base_fim = base_fim.astimezone(start.tzinfo)
+    end = base_fim.replace(hour=23, minute=59, second=59, microsecond=0)
     return start, end
 
 
