@@ -15,21 +15,48 @@ import {
 } from '@heroicons/react/24/outline';
 import { api } from '../services/api';
 import { useNotifications } from '../components/ui/Notifications';
+import {
+  CalendarToolbar,
+  DayView,
+  MonthView,
+  WeekView,
+  shiftCursor,
+  useOccurrences,
+} from '../components/cronograma/CalendarViews';
 
 /* ─── helpers ─── */
+
+const pad = (n) => String(n).padStart(2, '0');
+
+// Os inputs date/datetime-local trabalham em hora local. toISOString() converte
+// para UTC, o que adiantava o valor em 3h e, para eventos à noite, empurrava a
+// data para o dia seguinte. Por isso lemos os componentes locais da data.
+const toInputDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
 
 const toInputDateTime = (value) => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 16);
+  return `${toInputDate(value)}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-const toInputDate = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
+// Envia o instante preservando o offset local (ex.: 2026-08-14T00:00:00-03:00),
+// para o backend poder ancorar o dia inteiro no fuso do usuário.
+const toOffsetIso = (localValue, fallbackTime = '00:00:00') => {
+  if (!localValue) return null;
+  const hasTime = localValue.includes('T');
+  const date = new Date(hasTime ? localValue : `${localValue}T${fallbackTime}`);
+  if (Number.isNaN(date.getTime())) return null;
+  const offsetMin = -date.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMin);
+  const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+  return `${toInputDateTime(date)}:${pad(date.getSeconds())}${offset}`;
 };
 
 const formatDate = (value) => {
@@ -106,7 +133,7 @@ const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-const MiniCalendar = ({ events }) => {
+const MiniCalendar = ({ events, onSelectDay }) => {
   const [viewDate, setViewDate] = useState(() => new Date());
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
@@ -148,7 +175,10 @@ const MiniCalendar = ({ events }) => {
         {cells.map((day, i) => (
           <div key={i} className="flex items-center justify-center">
             {day ? (
-              <div className={`relative flex h-8 w-8 items-center justify-center rounded-full text-xs transition-colors ${
+              <button
+                type="button"
+                onClick={() => onSelectDay?.(new Date(year, month, day))}
+                className={`relative flex h-8 w-8 items-center justify-center rounded-full text-xs transition-colors ${
                 isToday(day)
                   ? 'bg-blue-600 dark:bg-blue-500 text-white font-bold'
                   : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -157,7 +187,7 @@ const MiniCalendar = ({ events }) => {
                 {eventDays.has(day) && (
                   <span className={`absolute -bottom-0.5 h-1 w-1 rounded-full ${isToday(day) ? 'bg-white' : 'bg-blue-500 dark:bg-blue-400'}`} />
                 )}
-              </div>
+              </button>
             ) : null}
           </div>
         ))}
@@ -185,6 +215,10 @@ const Cronograma = () => {
   const [showForm, setShowForm] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({ start: '', end: '' });
+
+  // Visualização do calendário: dia, semana, mês ou lista.
+  const [view, setView] = useState('mes');
+  const [cursor, setCursor] = useState(() => new Date());
 
   const [form, setForm] = useState({
     titulo: '',
@@ -255,12 +289,12 @@ const Cronograma = () => {
     setIsSubmitting(true);
     try {
       const inicioValue = form.dia_inteiro
-        ? new Date(`${form.inicio}T00:00:00`).toISOString()
-        : new Date(form.inicio).toISOString();
+        ? toOffsetIso(form.inicio, '00:00:00')
+        : toOffsetIso(form.inicio);
       const fimValue = form.fim
         ? form.dia_inteiro
-          ? new Date(`${form.fim}T23:59:59`).toISOString()
-          : new Date(form.fim).toISOString()
+          ? toOffsetIso(form.fim, '23:59:59')
+          : toOffsetIso(form.fim)
         : null;
 
       const payload = {
@@ -325,6 +359,39 @@ const Cronograma = () => {
     } catch (error) {
       notify({ type: 'error', message: 'Erro ao remover evento.' });
     }
+  };
+
+  /* ─── calendário ─── */
+
+  // Expande recorrências dentro do período visível (o backend devolve só a regra).
+  const occurrences = useOccurrences(events, view, cursor);
+
+  // Clique num dia (mês) ou numa faixa de hora (dia/semana) abre o formulário
+  // já com a data escolhida em "Início".
+  const openNewEventAt = (date) => {
+    if (!canEdit) return;
+    const base = new Date(date);
+    if (view === 'mes') base.setHours(8, 0, 0, 0);
+    setEditingId(null);
+    setForm({
+      titulo: '',
+      tipo: 'SALA_VACINA',
+      local: '',
+      inicio: toInputDateTime(base),
+      fim: '',
+      dia_inteiro: false,
+      observacoes: '',
+      recorrencia: 'NONE',
+      recorrencia_intervalo: 1,
+      recorrencia_fim: '',
+    });
+    setShowForm(true);
+  };
+
+  const handleSelectEvent = (ocorrencia) => {
+    if (!canEdit) return;
+    // Recorrências editam a série inteira, por isso usamos o evento original.
+    handleEdit(ocorrencia);
   };
 
   /* ─── stats ─── */
@@ -400,7 +467,13 @@ const Cronograma = () => {
 
             {/* Mini calendar */}
             <div className={`${cardClass} p-5`}>
-              <MiniCalendar events={events} />
+              <MiniCalendar
+                events={events}
+                onSelectDay={(dia) => {
+                  setCursor(dia);
+                  if (view === 'lista') setView('dia');
+                }}
+              />
             </div>
 
             {/* Tipo legend */}
@@ -640,13 +713,58 @@ const Cronograma = () => {
               </div>
             )}
 
+            {/* ── Calendário (dia / semana / mês) ── */}
+            {/* A barra fica sempre visível, inclusive no modo lista, senão não
+                haveria como voltar para as visualizações de calendário. */}
+            <div className={`${cardClass} space-y-4 p-4 sm:p-5`}>
+              <CalendarToolbar
+                view={view}
+                cursor={cursor}
+                onViewChange={setView}
+                onNavigate={(direction) => setCursor((atual) => shiftCursor(view, atual, direction))}
+                onToday={() => setCursor(new Date())}
+              />
+              {isLoading ? (
+                <div className="flex flex-col items-center gap-3 py-16">
+                  <ArrowPathIcon className="h-8 w-8 animate-spin text-slate-400 dark:text-slate-500" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Carregando eventos...</p>
+                </div>
+              ) : (
+                <>
+                {view === 'mes' && (
+                  <MonthView
+                    ocorrencias={occurrences}
+                    cursor={cursor}
+                    getTipo={getTipo}
+                    onSelectEvent={handleSelectEvent}
+                    onSelectSlot={openNewEventAt}
+                  />
+                )}
+                {view === 'semana' && (
+                  <WeekView
+                    ocorrencias={occurrences}
+                    cursor={cursor}
+                    getTipo={getTipo}
+                    onSelectEvent={handleSelectEvent}
+                    onSelectSlot={openNewEventAt}
+                  />
+                )}
+                {view === 'dia' && (
+                  <DayView
+                    ocorrencias={occurrences}
+                    cursor={cursor}
+                    getTipo={getTipo}
+                    onSelectEvent={handleSelectEvent}
+                    onSelectSlot={openNewEventAt}
+                  />
+                )}
+                </>
+              )}
+            </div>
+
             {/* ── Event list ── */}
-            {isLoading ? (
-              <div className="flex flex-col items-center gap-3 py-16">
-                <ArrowPathIcon className="h-8 w-8 text-slate-400 dark:text-slate-500 animate-spin" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">Carregando eventos...</p>
-              </div>
-            ) : events.length === 0 ? (
+            {view === 'lista' && !isLoading && (
+              events.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 py-16 px-6 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                   <CalendarDaysIcon className="h-7 w-7 text-slate-400 dark:text-slate-500" />
@@ -738,6 +856,7 @@ const Cronograma = () => {
                   );
                 })}
               </div>
+              )
             )}
           </main>
         </div>
