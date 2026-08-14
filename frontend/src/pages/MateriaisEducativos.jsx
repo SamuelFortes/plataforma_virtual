@@ -60,7 +60,8 @@ const MateriaisEducativos = () => {
   const userJson = localStorage.getItem('user');
   const user = userJson ? JSON.parse(userJson) : null;
   const role = (user?.role || 'USER').toUpperCase();
-  const canManageMaterials = ['PROFISSIONAL', 'GESTOR'].includes(role);
+  // Deve espelhar EDIT_ROLES em backend/app/api/routes/materiais_routes.py
+  const canManageMaterials = ['PROFISSIONAL', 'GESTOR', 'ADMIN'].includes(role);
   const [ubsInfo, setUbsInfo] = useState(null);
   const [ubsId, setUbsId] = useState('');
   const [materials, setMaterials] = useState([]);

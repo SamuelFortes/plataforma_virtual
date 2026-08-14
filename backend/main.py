@@ -78,22 +78,40 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# Origens de desenvolvimento local (sempre liberadas)
+_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://localhost:5173",
+    "https://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "https://127.0.0.1:5173",
+    "https://127.0.0.1:5174",
+    "https://plataforma-virtual-local.duckdns.org:5173",
+]
+
+# A URL pública vem do ambiente para não precisar mexer no código ao renomear o
+# serviço no Render ou ao apontar um domínio próprio.
+# RENDER_EXTERNAL_URL é injetada automaticamente pelo Render.
+for _env_name in ("PUBLIC_APP_URL", "FRONTEND_URL", "RENDER_EXTERNAL_URL"):
+    _origin = os.getenv(_env_name, "").strip().rstrip("/")
+    if _origin and _origin not in _CORS_ORIGINS:
+        _CORS_ORIGINS.append(_origin)
+
+# Origens extras separadas por vírgula (ex.: domínio customizado)
+for _origin in os.getenv("EXTRA_CORS_ORIGINS", "").split(","):
+    _origin = _origin.strip().rstrip("/")
+    if _origin and _origin not in _CORS_ORIGINS:
+        _CORS_ORIGINS.append(_origin)
+
+logger.info("CORS liberado para: %s", _CORS_ORIGINS)
+
 # Permite o front-end chamar a API do backend
 # IMPORTANTE: o CORS precisa ser configurado ANTES das rotas.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "https://localhost:5173",
-        "https://localhost:5174",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "https://127.0.0.1:5173",
-        "https://127.0.0.1:5174",
-        "https://plataforma-virtual-local.duckdns.org:5173",
-        "https://plataforma-virtual.onrender.com",
-    ],
+    allow_origins=_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"],
     allow_headers=["*"],

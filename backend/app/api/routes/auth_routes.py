@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 import re
 import os
+import logging
 import secrets
 import json
 import hmac
@@ -28,6 +29,8 @@ from app.utils.deps import get_current_active_user, get_current_gestor_user, get
 from app.utils.limiter import limiter
 from slowapi.util import get_remote_address
 
+logger = logging.getLogger(__name__)
+
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 cargos_router = APIRouter(tags=["cargos"])
 
@@ -38,12 +41,21 @@ MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
 
 # Google OAuth
-_render_url = os.getenv("RENDER_EXTERNAL_URL", "")
-_BACKEND_URL = os.getenv("BACKEND_URL", _render_url or "http://localhost:8000")
-_FRONTEND_URL = os.getenv("FRONTEND_URL", _render_url or "http://localhost:5173")
+_render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+# PUBLIC_APP_URL permite fixar o domínio público (custom domain, por exemplo)
+# sem depender do nome do serviço no Render.
+_public_url = os.getenv("PUBLIC_APP_URL", "").strip().rstrip("/") or _render_url
+_BACKEND_URL = (os.getenv("BACKEND_URL", "").strip() or _public_url or "http://localhost:8000").rstrip("/")
+_FRONTEND_URL = (os.getenv("FRONTEND_URL", "").strip() or _public_url or "http://localhost:5173").rstrip("/")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", f"{_BACKEND_URL}/api/auth/google/callback")
+# Atenção: uma variável declarada com valor vazio no painel do Render existe para
+# os.getenv e NÃO cai no default — por isso o .strip() com fallback explícito.
+GOOGLE_REDIRECT_URI = (
+    os.getenv("GOOGLE_REDIRECT_URI", "").strip()
+    or f"{_BACKEND_URL}/api/auth/google/callback"
+)
+logger.info("Google OAuth redirect_uri: %s", GOOGLE_REDIRECT_URI)
 _OAUTH_STATE_SECRET = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
 
 

@@ -7,6 +7,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useNotifications } from '../components/ui/Notifications';
 
+// URL pública da aplicação: definida por VITE_APP_URL no build ou, na falta dela,
+// a própria origem em que o app está sendo servido (evita link fixo no código).
+const APP_URL = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, '');
+
 const Notificacoes = () => {
   const { notify, confirm } = useNotifications();
   const [users, setUsers] = useState([]);
@@ -72,7 +76,7 @@ Tipo de Conta: ${roleDisplay}
 
 Agora você pode acessar todos os recursos disponíveis para o seu perfil.
 
-Acesse: https://plataforma-virtual.onrender.com/login
+Acesse: ${APP_URL}/login
 
 © 2026 Plataforma UBS.`;
 
