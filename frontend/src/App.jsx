@@ -23,6 +23,7 @@ import GerenciarUbs from './pages/GerenciarUbs';
 import AdminPanel from './pages/AdminPanel';
 import AuthCallback from './pages/AuthCallback';
 import NavBar from './components/NavBar';
+import BackBar from './components/ui/BackBar';
 import { NotificationsProvider } from './components/ui/Notifications';
 import { api } from './services/api';
 
@@ -120,6 +121,7 @@ function App() {
       <div className={isDark ? 'dark' : ''}>
         <Router>
           <ConditionalNavBar isDark={isDark} onToggleTheme={handleToggleTheme} />
+          <BackBar />
           <main className="bg-gray-50 dark:bg-slate-950 min-h-screen page-enter">
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
