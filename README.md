@@ -1,4 +1,4 @@
-# Plataforma Virtual — Gestão de UBS
+# Meu Território — Gestão de UBS
 
 Sistema web para gestão e diagnóstico de Unidades Básicas de Saúde (UBS), desenvolvido para apoiar gestores e profissionais de saúde na organização, monitoramento e melhoria contínua dos serviços prestados à comunidade.
 
