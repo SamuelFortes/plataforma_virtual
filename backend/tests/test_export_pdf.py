@@ -10,6 +10,7 @@ numa página.
 from app.services.reporting.simple_situational_report_pdf import (
     _BOXED_CHUNK,
     _boxed,
+    _fmt_date_br,
     _split_for_box,
 )
 from reportlab.lib.styles import ParagraphStyle
@@ -72,3 +73,13 @@ def test_boxed_gera_tabela_divisivel_para_texto_longo():
 def test_boxed_com_texto_curto_continua_com_uma_linha():
     tabela = _boxed("Uma observacao breve.", ESTILO)
     assert len(tabela._cellvalues) == 1
+
+
+def test_prazo_sai_no_formato_brasileiro():
+    assert _fmt_date_br("2026-08-30") == "30/08/2026"
+
+
+def test_prazo_desconhecido_passa_intacto():
+    assert _fmt_date_br("30/08/2026") == "30/08/2026"
+    assert _fmt_date_br(None) == ""
+    assert _fmt_date_br("a definir") == "a definir"

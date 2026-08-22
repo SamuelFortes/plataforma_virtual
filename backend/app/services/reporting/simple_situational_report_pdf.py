@@ -80,6 +80,13 @@ def _format_indicator_value(value: Any, tipo_valor: Optional[str]) -> str:
     return _fmt_percent(value)
 
 
+def _fmt_date_br(value: Any) -> str:
+    """Converte AAAA-MM-DD em DD/MM/AAAA; devolve o original se nao reconhecer."""
+    texto = str(value or "").strip()
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", texto)
+    return f"{m.group(3)}/{m.group(2)}/{m.group(1)}" if m else texto
+
+
 def _safe_filename(value: str, default: str = "relatorio_situacional") -> str:
     if not value:
         return default
@@ -322,6 +329,7 @@ def generate_situational_report_pdf_simple(
     diagnosis,
     municipality: str = "",
     reference_period: str = "",
+    problems: Optional[list[dict]] = None,
 ) -> tuple[bytes, str]:
     ubs = diagnosis.ubs
     services = [s.name for s in (diagnosis.services.services or [])]
@@ -627,7 +635,69 @@ def generate_situational_report_pdf_simple(
     story.append(Paragraph("Infraestrutura e manutenção", style_h3))
     story.append(_boxed(getattr(needs, "necessidades_infraestrutura_manutencao", "-"), style_body))
 
-    # ==================== 6. INDICADORES ====================
+    # ==================== 6. MATRIZ GUT ====================
+    story.append(_section_header(next_section("Priorização de Problemas (Matriz GUT)"), style_h2))
+    story.append(Spacer(1, 4))
+    if problems:
+        gut_data = [[
+            _cell("Problema", style_table_header),
+            _cell("G", style_table_header),
+            _cell("U", style_table_header),
+            _cell("T", style_table_header),
+            _cell("Score", style_table_header),
+            _cell("Prior.", style_table_header),
+        ]]
+        for p in problems:
+            gut_data.append([
+                _cell(p.get("titulo") or "-"),
+                _cell(p.get("gut_gravidade")),
+                _cell(p.get("gut_urgencia")),
+                _cell(p.get("gut_tendencia")),
+                _cell(p.get("gut_score")),
+                _cell("Sim" if p.get("is_prioritario") else "-"),
+            ])
+        gut_table = Table(gut_data, colWidths=[9.3 * cm, 1.2 * cm, 1.2 * cm, 1.2 * cm, 1.8 * cm, 1.8 * cm])
+        gut_table.setStyle(_zebra_style(len(gut_data)))
+        gut_table.setStyle(TableStyle([
+            ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        story.append(gut_table)
+
+        # As intervenções vão como parágrafos, não como tabela: parágrafos quebram
+        # entre páginas sozinhos, e um objetivo ou ação longo numa célula alta
+        # demais derrubaria o build (foi a causa do 500 corrigido antes).
+        com_plano = [p for p in problems if p.get("interventions")]
+        if com_plano:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph("Intervenções planejadas", style_h3))
+            for p in com_plano:
+                story.append(Spacer(1, 4))
+                story.append(Paragraph(
+                    f"<b>{_escape_xml(p.get('titulo') or '-')}</b>"
+                    f" (GUT {_escape_xml(p.get('gut_score'))})",
+                    style_body,
+                ))
+                for iv in p.get("interventions") or []:
+                    partes = [_escape_xml(iv.get("objetivo") or "-")]
+                    if iv.get("responsavel"):
+                        partes.append(f"Responsável: {_escape_xml(iv['responsavel'])}")
+                    partes.append(f"Situação: {_escape_xml(iv.get('status') or '-')}")
+                    story.append(Paragraph("• " + " — ".join(partes), style_body))
+                    for a in iv.get("actions") or []:
+                        prazo = (f", prazo {_escape_xml(_fmt_date_br(a['prazo']))}"
+                                 if a.get("prazo") else "")
+                        story.append(Paragraph(
+                            f"&nbsp;&nbsp;&nbsp;&nbsp;– {_escape_xml(a.get('acao') or '-')}"
+                            f" ({_escape_xml(a.get('status') or '-')}{prazo})",
+                            style_body,
+                        ))
+    else:
+        story.append(Paragraph("Nenhum problema priorizado registrado.", style_body))
+
+    # ==================== 7. INDICADORES ====================
     story.append(_section_header(next_section("Indicadores Epidemiológicos"), style_h2))
     story.append(Spacer(1, 4))
     indicators = diagnosis.indicators_latest or []
@@ -657,7 +727,7 @@ def generate_situational_report_pdf_simple(
     else:
         story.append(Paragraph("Nenhum indicador registrado.", style_body))
 
-    # ==================== 7. RECURSOS HUMANOS ====================
+    # ==================== 8. RECURSOS HUMANOS ====================
     story.append(_section_header(next_section("Nossos Profissionais"), style_h2))
     story.append(Spacer(1, 4))
     groups = diagnosis.professional_groups or []

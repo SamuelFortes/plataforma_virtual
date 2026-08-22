@@ -1071,12 +1071,49 @@ async def export_situational_report_pdf(
     """Exporta o relatório situacional em PDF, a partir do diagnóstico agregado.
 
     O PDF cobre identificação da UBS, cronogramas, serviços, perfil do território,
-    problemas e necessidades, indicadores e recursos humanos — todos vindos de
-    "/diagnosis". Os módulos de agendamento, materiais e microáreas ficaram fora
-    do relatório desde a simplificação de escopo em baa9d13.
+    problemas e necessidades, a matriz de priorização GUT, indicadores e recursos
+    humanos. Os módulos de agendamento, materiais e microáreas ficaram fora do
+    relatório desde a simplificação de escopo em baa9d13.
     """
 
     diagnosis = await get_full_diagnosis(ubs_id=ubs_id, db=db, current_user=current_user)
+
+    # Matriz GUT: única parte do relatório que não vem de "/diagnosis".
+    problems_stmt = (
+        select(UBSProblem)
+        .options(
+            selectinload(UBSProblem.interventions).selectinload(UBSIntervention.actions)
+        )
+        .where(UBSProblem.ubs_id == ubs_id)
+        .order_by(UBSProblem.gut_score.desc(), UBSProblem.titulo)
+    )
+    problems_data = [
+        {
+            "titulo": p.titulo,
+            "gut_gravidade": p.gut_gravidade,
+            "gut_urgencia": p.gut_urgencia,
+            "gut_tendencia": p.gut_tendencia,
+            "gut_score": p.gut_score,
+            "is_prioritario": p.is_prioritario,
+            "interventions": [
+                {
+                    "objetivo": iv.objetivo,
+                    "responsavel": iv.responsavel,
+                    "status": iv.status,
+                    "actions": [
+                        {
+                            "acao": a.acao,
+                            "prazo": a.prazo.isoformat() if a.prazo else None,
+                            "status": a.status,
+                        }
+                        for a in (iv.actions or [])
+                    ],
+                }
+                for iv in (p.interventions or [])
+            ],
+        }
+        for p in (await db.execute(problems_stmt)).scalars().all()
+    ]
 
     try:
         from app.services.reporting.simple_situational_report_pdf import (
@@ -1087,6 +1124,7 @@ async def export_situational_report_pdf(
             diagnosis,
             municipality="Município de Parnaíba",
             reference_period=(diagnosis.ubs.periodo_referencia or ""),
+            problems=problems_data,
         )
     except Exception as exc:
         logger.exception("Erro ao gerar PDF")
