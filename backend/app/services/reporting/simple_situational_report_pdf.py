@@ -233,8 +233,45 @@ def _zebra_style(row_count: int) -> TableStyle:
     return style
 
 
+_BOXED_CHUNK = 1200  # caracteres por linha da tabela
+
+
+def _split_for_box(text: str) -> list[str]:
+    """Fatia o texto em pedacos que caibam numa linha de tabela.
+
+    Tabelas do ReportLab so quebram ENTRE linhas: uma unica celula mais alta que
+    a pagina levanta LayoutError e derruba a exportacao inteira. Como os campos
+    de texto do relatorio (problemas, necessidades, perfil) chegam com dezenas de
+    milhares de caracteres, quebramos em varias linhas para o quadro poder
+    continuar na pagina seguinte.
+
+    O corte respeita paragrafos e, dentro de um paragrafo muito longo, o fim de
+    frase — para nao cortar palavra no meio.
+    """
+    limpo = (text or "-").strip() or "-"
+    pedacos: list[str] = []
+    for paragrafo in limpo.split("\n"):
+        paragrafo = paragrafo.strip()
+        if not paragrafo:
+            continue
+        if len(paragrafo) <= _BOXED_CHUNK:
+            pedacos.append(paragrafo)
+            continue
+        atual = ""
+        for frase in re.split(r"(?<=[.;:!?])\s+", paragrafo):
+            if atual and len(atual) + len(frase) + 1 > _BOXED_CHUNK:
+                pedacos.append(atual)
+                atual = frase
+            else:
+                atual = (atual + " " + frase).strip()
+        if atual:
+            pedacos.append(atual)
+    return pedacos or ["-"]
+
+
 def _boxed(text: str, style: ParagraphStyle) -> Table:
-    table = Table([[Paragraph(_escape_xml(text or "-"), style)]], colWidths=[16.5 * cm])
+    linhas = [[Paragraph(_escape_xml(pedaco), style)] for pedaco in _split_for_box(text)]
+    table = Table(linhas, colWidths=[16.5 * cm], splitByRow=1)
     table.setStyle(
         TableStyle(
             [
@@ -242,8 +279,12 @@ def _boxed(text: str, style: ParagraphStyle) -> Table:
                 ("BOX", (0, 0), (-1, -1), 0.25, TABLE_GRID),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                # Espaco menor entre as fatias internas do que nas bordas, para o
+                # texto quebrado em varias linhas continuar parecendo um bloco.
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (0, 0), 6),
+                ("BOTTOMPADDING", (0, -1), (-1, -1), 6),
             ]
         )
     )
