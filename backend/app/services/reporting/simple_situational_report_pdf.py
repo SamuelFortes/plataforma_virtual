@@ -322,11 +322,9 @@ def generate_situational_report_pdf_simple(
     diagnosis,
     municipality: str = "",
     reference_period: str = "",
-    extra_data: Optional[dict] = None,
 ) -> tuple[bytes, str]:
     ubs = diagnosis.ubs
     services = [s.name for s in (diagnosis.services.services or [])]
-    extra = extra_data or {}
 
     styles = getSampleStyleSheet()
     style_title = ParagraphStyle(
